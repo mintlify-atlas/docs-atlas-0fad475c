@@ -1,0 +1,254 @@
+---
+title: Team data endpoints
+description: Retrieve team information, budgets, and auction performance
+---
+
+## Overview
+
+The team endpoints provide read access to team data including budgets, spending, plots won, and team metadata. These endpoints are used by both the team dashboard and admin panel to display real-time team information.
+
+## Get all teams
+
+### GET /api/data/teams
+
+Retrieve a list of all registered teams with their current auction status.
+
+```bash
+curl http://localhost:8000/api/data/teams
+```
+
+**Query parameters:**
+
+<ParamField query="t" type="number">
+  Cache-busting timestamp. Recommended to prevent stale data.
+  
+  Example: `t=1709123456789`
+</ParamField>
+
+**Response:**
+
+<ResponseField name="teams" type="array">
+  Array of team objects
+  
+  <Expandable title="Team object structure">
+    <ResponseField name="id" type="string">
+      Unique team identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Team display name
+    </ResponseField>
+    
+    <ResponseField name="budget" type="number">
+      Total budget allocated to the team (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="spent" type="number">
+      Total amount spent on plots (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="plots_won" type="number">
+      Number of plots won by this team
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Team's display color (hex code)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example response:**
+
+```json
+[
+  {
+    "id": "team-1",
+    "name": "Alpha Developers",
+    "budget": 50000000,
+    "spent": 15000000,
+    "plots_won": 3,
+    "color": "#FF6B6B"
+  },
+  {
+    "id": "team-2",
+    "name": "Beta Builders",
+    "budget": 50000000,
+    "spent": 22000000,
+    "plots_won": 5,
+    "color": "#4ECDC4"
+  }
+]
+```
+
+**Usage example:**
+
+```tsx app/page.tsx
+const res = await fetch("/api/data/teams");
+const teams = await res.json();
+```
+
+---
+
+## Get specific team
+
+### GET /api/data/team/:teamId
+
+Retrieve detailed information about a specific team.
+
+```bash
+curl http://localhost:8000/api/data/team/team-1
+```
+
+**Path parameters:**
+
+<ParamField path="teamId" type="string" required>
+  The unique team identifier
+</ParamField>
+
+**Query parameters:**
+
+<ParamField query="t" type="number">
+  Cache-busting timestamp
+</ParamField>
+
+**Response:**
+
+<ResponseField name="team" type="object">
+  <Expandable title="Team details">
+    <ResponseField name="id" type="string">
+      Unique team identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Team display name
+    </ResponseField>
+    
+    <ResponseField name="budget" type="number">
+      Total budget allocated (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="spent" type="number">
+      Total amount spent on winning bids (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="plots_won" type="number">
+      Number of plots currently owned
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Team's assigned color for map visualization
+    </ResponseField>
+    
+    <ResponseField name="owned_plots" type="array">
+      Array of plot numbers owned by this team
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example response:**
+
+```json
+{
+  "id": "team-1",
+  "name": "Alpha Developers",
+  "budget": 50000000,
+  "spent": 15000000,
+  "plots_won": 3,
+  "color": "#FF6B6B",
+  "owned_plots": [1, 5, 12]
+}
+```
+
+**Usage example:**
+
+```tsx app/dashboard/page.tsx
+const teamId = localStorage.getItem("team_id");
+const teamRes = await fetch(`/api/data/team/${teamId}?t=${Date.now()}`, {
+  cache: "no-store"
+});
+const team = await teamRes.json();
+```
+
+---
+
+## Calculated values
+
+Team endpoints return raw budget and spending data. Use these formulas to calculate derived metrics:
+
+**Remaining cash:**
+```javascript
+const remainingCash = team.budget - team.spent;
+```
+
+**Portfolio value:**
+```javascript
+const portfolioValue = plots
+  .filter(p => p.winner_team_id === team.id && p.status === "sold")
+  .reduce((sum, p) => 
+    sum + (Number(p.current_bid || p.total_plot_price || 0) + 
+           Number(p.round_adjustment || 0)), 0
+  );
+```
+
+**Net worth:**
+```javascript
+const netWorth = remainingCash + portfolioValue;
+```
+
+**Final score** (net worth + plot bonus):
+```javascript
+const finalScore = netWorth + (team.plots_won * 10000000); // ₹1 crore per plot
+```
+
+---
+
+## Real-time updates
+
+Team data is updated in real-time via Socket.IO events. Subscribe to these events for live updates:
+
+**team_update event:**
+```tsx
+socket.on("team_update", (data) => {
+  // data contains: { id, spent, budget, plots_won }
+  setTeam(prev => ({
+    ...prev,
+    spent: data.spent,
+    budget: data.budget,
+    plots_won: data.plots_won
+  }));
+});
+```
+
+See [Socket.IO events](/api/socket-events) for complete event documentation.
+
+---
+
+## Error responses
+
+<ResponseField name="error" type="object">
+  <Expandable title="Error structure">
+    <ResponseField name="detail" type="string">
+      Human-readable error message
+    </ResponseField>
+    
+    <ResponseField name="status_code" type="number">
+      HTTP status code
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Common errors:**
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 404 | Team not found | The specified team ID does not exist |
+| 500 | Internal server error | Database connection or server issue |
+
+**Example error:**
+
+```json
+{
+  "detail": "Team with ID 'team-999' not found",
+  "status_code": 404
+}
+```

@@ -1,80 +1,383 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get from team login to your first bid in under 5 minutes
 ---
 
-## Get started in three steps
+## Join the auction
 
-Get your documentation site running locally and make your first customization.
+This guide walks you through logging in as a team, navigating the dashboard, and placing your first bid.
 
-### Step 1: Set up your local environment
+<Steps>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Step title="Log in with your team credentials">
 
-### Step 2: Deploy your changes
+Navigate to the AuctionFest home page. You'll see a bold neo-brutalist login screen with:
+- A large "PLANOMICS AUCTION" title
+- Team name input field
+- Passcode input field
+- Connection status indicator
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+**Enter your credentials:**
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+1. Type your **team name** (case-insensitive matching)
+2. Enter any **passcode** with 3+ characters for demo purposes
+3. Click **ENTER AUCTION**
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<CodeGroup>
+```typescript Team authentication logic
+// from app/page.tsx:40
+const handleLogin = () => {
+  if (!teamName.trim()) {
+    setError("Please enter your team name");
+    return;
+  }
+  // Match team by name (case-insensitive)
+  const team = teams.find(
+    (t) => t.name.toLowerCase() === teamName.trim().toLowerCase(),
+  );
+  if (!team) {
+    setError("Team not found! Please check the team name.");
+    return;
+  }
+  if (passcode.length < 3) {
+    setError("Enter a valid passcode (any 3+ chars for demo)");
+    return;
+  }
 
-### Step 3: Go live
+  localStorage.setItem("team_id", team.id);
+  router.push("/dashboard");
+};
+```
+</CodeGroup>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Warning>
+  If you see "Team not found", verify your team name spelling with the admin. Team IDs are stored in `localStorage` for session persistence.
+</Warning>
+
+</Step>
+
+<Step title="Explore your team dashboard">
+
+Once logged in, you'll land on your team dashboard with three key sections:
+
+### Header: Budget overview
+
+Your financial status is always visible at the top:
+
+- **Cash**: Remaining budget (Budget - Spent)
+- **Plots**: Total value of owned plots (bid amount + adjustments)
+- **Net Worth**: Cash + Plots
+
+```typescript
+// from app/dashboard/page.tsx:595
+const remainingCash =
+  Number(userTeam.budget) - Number(userTeam.spent || 0);
+const portfolioValue = plots
+  .filter(
+    (p) =>
+      p.winner_team_id === userTeam.id &&
+      (p.status === "sold" ||
+        (round4Phase === "bid" &&
+          (p.status === "active" || p.status === "pending"))),
+  )
+  .reduce(
+    (sum, p) =>
+      sum +
+      (Number(p.current_bid || p.total_plot_price || 0) +
+        Number(p.round_adjustment || 0)),
+    0,
+  );
+```
+
+### Left panel: Plot visualization
+
+Watch the current plot's SVG shape animate in with a countdown timer during "Going..." phase.
+
+### Center panel: Plot details & bid controls
+
+See base price, current bid, total area, and winner information.
+
+### Right panel: Live bid feed
+
+All bids for the current plot appear here in real-time.
+
+<Info>
+  The **Server Online** indicator at the top shows your Socket.IO connection status. Green = connected, Red = offline.
+</Info>
+
+</Step>
+
+<Step title="Place your first bid">
+
+### Understanding the bid interface
+
+The bid card shows:
+
+- **Current Highest Bid** or **Starting Price** (with adjustments applied)
+- **Minimum bid**: Current bid + ₹1,00,000 (1 Lakh) increment
+- **Your projected balance** if you win
+
+### Bidding workflow
+
+<Tabs>
+  <Tab title="Step-by-step">
+    1. Click the **+** button to increment your bid by ₹5,00,000 (5 Lakhs)
+    2. Click **-** to decrement if needed
+    3. The bid amount displays in Indian number format with Crore/Lakh labels
+    4. Click **PLACE BID** when ready
+  </Tab>
+  <Tab title="Code reference">
+    ```typescript
+    // from components/BidCard.tsx:99
+    const handlePlaceBid = () => {
+      if (!socket || !currentPlot || !userTeam) return;
+
+      // Prevent bids during adjustment rounds
+      if (
+        currentRound === 2 ||
+        currentRound === 3 ||
+        currentRound === 5 ||
+        currentRound === 6
+      ) {
+        setError("Bidding not allowed during adjustment rounds");
+        return;
+      }
+
+      // Prevent consecutive bids by same team
+      if (currentPlot.winner_team_id === userTeam.id) {
+        setError("You already hold the highest bid!");
+        return;
+      }
+
+      // Require user to press + or - first to activate bid
+      if (!isBidActive) {
+        setError("Press + to place a bid");
+        return;
+      }
+
+      const amount = isBidActive && bidAmount ? parseInt(bidAmount) : minBid;
+      if (isNaN(amount) || amount < minBid) {
+        setError(`Minimum bid amount is ₹${minBid.toLocaleString("en-IN")}`);
+        return;
+      }
+
+      const remaining = Number(userTeam.budget) - Number(userTeam.spent || 0);
+      if (amount > remaining) {
+        setError(
+          `Bid exceeds remaining budget (₹${remaining.toLocaleString("en-IN")})!`,
+        );
+        return;
+      }
+
+      setIsSubmitting(true);
+      setError("");
+
+      socket.emit("place_bid", {
+        team_id: userTeam.id,
+        amount: amount,
+        plot_number: currentPlot.number,
+      });
+    };
+    ```
+  </Tab>
+</Tabs>
+
+### Real-time bid updates
+
+When any team places a bid:
+
+```typescript
+// from app/dashboard/page.tsx:336
+const handleNewBid = (data: any) => {
+  setRecentBids((prev) => [data, ...prev].slice(0, 10));
+
+  setCurrentPlot((prev: any) =>
+    prev
+      ? {
+        ...prev,
+        current_bid: data.amount,
+        winner_team_id: data.team_id,
+      }
+      : null,
+  );
+
+  setPlots((prev) =>
+    prev.map((p) =>
+      p.number === data.plot_number
+        ? { ...p, current_bid: data.amount, winner_team_id: data.team_id }
+        : p,
+    ),
+  );
+};
+```
+
+<Tip>
+  **Pro tip:** You cannot bid consecutively. If you hold the highest bid, wait for another team to outbid you before placing another bid.
+</Tip>
+
+</Step>
+
+<Step title="Watch the plot sell">
+
+When the admin clicks **Sell Plot**, you'll see:
+
+1. **Red countdown overlay** (3 → 2 → 1)
+2. **SOLD! celebration screen** with winner and final price
+3. **Automatic update** to your budget if you won
+
+```typescript
+// from app/dashboard/page.tsx:247
+useEffect(() => {
+  let interval: NodeJS.Timeout;
+  if (auctionStatus === "selling") {
+    setSellCountdown(3);
+    interval = setInterval(() => {
+      setSellCountdown((prev) => (prev > 1 ? prev - 1 : 1));
+    }, 2000);
+  }
+  return () => clearInterval(interval);
+}, [auctionStatus]);
+```
+
+The countdown animation uses Framer Motion for smooth transitions, with the number scaling up as it counts down. The entire plot visualization is covered with a red overlay during the selling phase.
+
+</Step>
+
+</Steps>
+
+## Understanding auction rounds
+
+<CardGroup cols={3}>
+  <Card title="Round 1" icon="1">
+    **Bidding**  
+    Initial auction for all plots
+  </Card>
+  <Card title="Rounds 2 & 3" icon="2">
+    **Adjustments**  
+    Policy questions affect plot values
+  </Card>
+  <Card title="Round 4" icon="4">
+    **Final bidding + Rebid market**  
+    Sell your plots at markup or bid on resales
+  </Card>
+  <Card title="Rounds 5 & 6" icon="5">
+    **Final adjustments**  
+    Last policy impacts before scoring
+  </Card>
+  <Card title="Completion" icon="trophy">
+    **Leaderboard**  
+    Score = Net Worth + (₹10 Crores × plots)
+  </Card>
+</CardGroup>
+
+### Bidding vs. adjustment rounds
+
+<Tabs>
+  <Tab title="Bidding rounds (1, 4)">
+    - **Place bids** on active plots
+    - **Min increment**: ₹1,00,000 (1 Lakh)
+    - **Step size**: ₹5,00,000 (5 Lakhs)
+    - **No consecutive bids** by same team
+  </Tab>
+  <Tab title="Adjustment rounds (2, 3, 5, 6)">
+    - **No bidding allowed**
+    - Admin presents policy questions
+    - Plot values adjust in real-time
+    - Watch map for +/- adjustments
+  </Tab>
+</Tabs>
+
+```typescript
+// from components/BidCard.tsx:196
+const isBiddingRound = currentRound === 1 || currentRound === 4;
+
+if (!isBiddingRound) {
+  return (
+    <NeoCard className="bg-[var(--color-bg)]">
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Clock size={48} className="text-[var(--color-primary)] mb-3" />
+        <h3 className="text-xl font-black uppercase mb-2">
+          Adjustment Round
+        </h3>
+        <p className="text-sm font-bold text-[var(--color-text)] opacity-50 uppercase">
+          Waiting for admin to apply adjustments...
+        </p>
+        <div className="mt-3">
+          <NeoBadge variant="warning">Round {currentRound}</NeoBadge>
+        </div>
+      </div>
+    </NeoCard>
+  );
+}
+```
+
+## Round 4 special: Rebid marketplace
+
+In Round 4, teams can sell their owned plots:
+
+<Steps>
+  <Step title="View your portfolio">
+    When Round 4's "Sell Phase" activates, you'll see all your owned plots.
+  </Step>
+  <Step title="List a plot for sale">
+    - Enter asking price between **1x–1.1x** current value
+    - Click **SELL** to list on marketplace
+    - Other teams see your offer and can purchase instantly
+  </Step>
+  <Step title="Cancel listing">
+    Click **UNSELL** to remove from marketplace before someone buys.
+  </Step>
+</Steps>
+
+```typescript
+// from app/dashboard/page.tsx:927
+const currentValue =
+  parseFloat(
+    plot.current_bid || plot.total_plot_price || 0,
+  ) + parseFloat(plot.round_adjustment || 0);
+const maxAllowed = currentValue * 1.1; // 10% markup
+const minAllowed = currentValue; // No discount
+```
+
+<Warning>
+  **You cannot bid on plots you are selling.** The system will disable bidding if you're the original seller in Round 4.
+</Warning>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you can bid, explore these features:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Team dashboard deep dive"
+    icon="gauge-high"
+    href="/features/team-dashboard"
+  >
+    Master budget tracking, plot visualization, and advanced strategies
+  </Card>
+  <Card
+    title="Auction mechanics"
+    icon="gears"
+    href="/features/auction-mechanics"
+  >
+    Learn scoring formulas, adjustment mechanics, and rebid market rules
+  </Card>
+  <Card
+    title="Live view mode"
+    icon="tv"
+    href="/features/live-view"
+  >
+    Watch the auction as a spectator without logging in
+  </Card>
+  <Card
+    title="Socket events reference"
+    icon="bolt"
+    href="/api/socket-events"
+  >
+    Understand real-time events like `new_bid`, `plot_adjustment`, and `team_update`
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+<Tip>
+  Press the **theme changer** button in the header to switch between color schemes and see the neo-brutalist design system in action!
+</Tip>

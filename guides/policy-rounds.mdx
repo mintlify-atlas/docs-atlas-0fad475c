@@ -1,0 +1,418 @@
+---
+title: Policy adjustment rounds
+description: Guide for managing policy rounds 2, 3, 5, and 6 with questions and plot adjustments
+---
+
+## Overview
+
+Policy rounds (2, 3, 5, and 6) are non-bidding rounds where the admin can:
+
+- Push policy questions to teams
+- Adjust plot prices based on policy impacts
+- Visualize changes on the city map
+- Undo adjustments if needed
+
+These rounds simulate real-world urban planning scenarios where government policies affect land values.
+
+## Understanding policy rounds
+
+When you switch to a policy round (2, 3, 5, or 6), the admin interface changes to show:
+
+- **Policy question carousel**: Pre-loaded questions for that round
+- **Manual plot adjustment panel**: Tools to modify plot prices
+- **Undo button**: Revert the last adjustment
+- **Recent adjustments tracking**: Visual indicators on the map
+
+<Note>
+  Teams see a full-screen policy display with the active question, the city map showing adjustments, and a leaderboard.
+</Note>
+
+## Policy questions system
+
+Each policy round has pre-loaded questions stored on the backend.
+
+### Question structure
+
+Questions are fetched from:
+
+```typescript
+GET /api/admin/questions/{round_number}
+```
+
+Example response:
+
+```json
+[
+  {
+    "policy_description": "A new metro line is being built, increasing accessibility"
+  },
+  {
+    "policy_description": "Environmental regulations restrict construction in certain zones"
+  }
+]
+```
+
+### Navigating questions
+
+<Steps>
+  <Step title="View current question">
+    The policy panel shows the current question with:
+    - Question number (e.g., "Question 1 of 5")
+    - Full policy description text
+    - Navigation arrows
+  </Step>
+
+  <Step title="Navigate between questions">
+    Use the arrow buttons to browse all questions:
+    - **Left arrow**: Previous question (disabled on first question)
+    - **Right arrow**: Next question (disabled on last question)
+
+    <Tip>
+      Browse all questions before pushing them to teams so you can plan your adjustments.
+    </Tip>
+  </Step>
+
+  <Step title="Push question to teams">
+    When ready, click the **PUSH** button. This will:
+
+    - Send the question to all connected teams via Socket.IO
+    - Display the question in a prominent banner on team dashboards
+    - Clear previous adjustment highlights on the map
+    - Show a confirmation message
+
+    ```typescript
+    // Sends POST /api/admin/push-question
+    {
+      "policy_description": "Your policy text here"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Adjusting plot prices
+
+After pushing a policy question, you can adjust plot prices to reflect the policy's impact.
+
+### Manual adjustment workflow
+
+<Steps>
+  <Step title="Identify affected plots">
+    Determine which plots are affected by the policy. For example:
+    - Metro line policy: Plots near the route
+    - Environmental policy: Plots in restricted zones
+    - Commercial development: Plots in business districts
+  </Step>
+
+  <Step title="Enter plot numbers">
+    In the "Manual Plot Adjustment" section, enter the plot numbers:
+
+    ```
+    1,2,3
+    ```
+
+    You can adjust multiple plots at once using comma-separated values.
+
+    <Note>
+      Plot numbers must match the numbers shown in the plot status table. Invalid numbers will be ignored.
+    </Note>
+  </Step>
+
+  <Step title="Set percentage adjustment">
+    Enter the percentage change (positive or negative):
+
+    - **Positive values**: Increase plot prices (e.g., `10` for +10%)
+    - **Negative values**: Decrease plot prices (e.g., `-15` for -15%)
+
+    Example inputs:
+    ```
+    10    → Increases plots 1, 2, 3 by 10%
+    -5    → Decreases plots 1, 2, 3 by 5%
+    25    → Increases plots 1, 2, 3 by 25%
+    ```
+  </Step>
+
+  <Step title="Apply the adjustment">
+    Click **APPLY**. The system will:
+
+    - Calculate the absolute adjustment amount for each plot
+    - Update the `round_adjustment` field
+    - Broadcast the changes to all teams
+    - Display a confirmation message (e.g., "+10% applied to 3 plot(s)")
+    - Highlight adjusted plots on the map with orange/red pulsing borders
+
+    ```typescript
+    // Sends POST /api/admin/adjust-plot
+    {
+      "plot_numbers": [1, 2, 3],
+      "adjustment_percent": 10
+    }
+    ```
+
+    <Note>
+      Adjustments are cumulative within a round. If you adjust a plot multiple times, the changes stack.
+    </Note>
+  </Step>
+</Steps>
+
+### Understanding adjustments
+
+Each plot has:
+
+- **Base price**: The original price per square meter
+- **Total plot price**: Base price × actual area
+- **Round adjustment**: Cumulative adjustment amount from policy rounds
+- **Current bid**: Highest bid during auction rounds
+
+The **displayed price** to teams is:
+
+```
+Current Price = (Current Bid || Total Plot Price) + Round Adjustment
+```
+
+## Undo functionality
+
+If you make a mistake, you can undo the most recent adjustment.
+
+<Steps>
+  <Step title="Click the undo button">
+    In the policy panel, click the **↩️ Undo** button (circular arrow icon).
+  </Step>
+
+  <Step title="Revert the adjustment">
+    The system will:
+    - Reverse the last percentage adjustment
+    - Restore the previous `round_adjustment` values
+    - Broadcast the revert to all teams
+    - Show a confirmation message
+
+    ```typescript
+    // Sends POST /api/admin/undo-adjustment
+    ```
+
+    <Warning>
+      Undo only reverts the **most recent** adjustment. You cannot undo multiple adjustments or undo out of order.
+    </Warning>
+  </Step>
+</Steps>
+
+## Visual feedback
+
+The city map provides visual feedback for policy adjustments:
+
+### Map display modes
+
+Teams can toggle between two map views:
+
+- **Changes view**: Highlights recently adjusted plots
+  - Orange/red pulsing borders for increased values
+  - Visual emphasis on policy-affected plots
+  - Shows `round_adjustment` deltas
+
+- **Types view**: Shows plot types (residential, commercial, industrial)
+  - Color-coded by plot type
+  - No adjustment highlights
+
+### Adjustment indicators
+
+Adjusted plots show:
+
+- **Pulsing animation**: Draws attention to recently changed plots
+- **Orange/red color**: Intensity indicates adjustment magnitude
+- **Delta badge**: Shows the adjustment amount on hover
+
+<Tip>
+  Encourage teams to hover over adjusted plots to see the exact delta amount and updated price.
+</Tip>
+
+## Policy round workflow example
+
+Here's a complete workflow for a policy round:
+
+<Steps>
+  <Step title="Switch to policy round">
+    Click **R2** (or R3, R5, R6) in the round selector.
+
+    The interface changes to show the policy panel and questions are loaded from the backend.
+  </Step>
+
+  <Step title="Review and select question">
+    Browse the available questions using the navigation arrows.
+
+    For example, select: *"A new metro line is being constructed along the eastern corridor, improving connectivity and access to the central business district."*
+  </Step>
+
+  <Step title="Push the question">
+    Click **PUSH** to broadcast the question to all teams.
+
+    Teams will see the policy in a large banner on their dashboard.
+  </Step>
+
+  <Step title="Adjust affected plots">
+    Identify plots near the eastern corridor (e.g., plots 15, 16, 17, 18) and increase their values:
+
+    - Plot numbers: `15,16,17,18`
+    - Adjustment: `15` (15% increase)
+    - Click **APPLY**
+
+    Teams will immediately see the price changes highlighted on their map.
+  </Step>
+
+  <Step title="Wait for teams to react">
+    Give teams time to:
+    - Review the policy impact
+    - Study the map changes
+    - Discuss strategy
+
+    <Tip>
+      Announce a time limit for the policy review phase (e.g., 2-3 minutes).
+    </Tip>
+  </Step>
+
+  <Step title="Push additional questions (optional)">
+    If you have multiple policies per round, navigate to the next question and repeat the process.
+
+    For example: *"Environmental regulations now restrict construction in the northern wetlands area."*
+
+    Then adjust plots in the northern area (e.g., plots 5, 6, 7) by -20%.
+  </Step>
+
+  <Step title="Advance to next round">
+    When the policy round is complete, switch to the next round:
+
+    - After Round 2 → Round 3 (another policy round)
+    - After Round 3 → Round 4 (sell & rebid)
+    - After Round 5 → Round 6 (final policy round)
+    - After Round 6 → End Game
+  </Step>
+</Steps>
+
+## Best practices
+
+### Adjustment magnitude
+
+<Card title="Typical adjustment ranges" icon="chart-line">
+  - **Minor policy impact**: ±5-10%
+  - **Moderate policy impact**: ±10-20%
+  - **Major policy impact**: ±20-30%
+  
+  Avoid extreme adjustments (>50%) as they can destabilize the game economy.
+</Card>
+
+### Communication
+
+- **Announce the round**: Tell teams when you're switching to a policy round
+- **Read the policy aloud**: Ensure all teams understand the scenario
+- **Explain the adjustments**: Clarify which plots are affected and why
+- **Set time limits**: Give teams a fixed time to review changes
+
+### Timing
+
+- **Policy rounds should be shorter**: 2-5 minutes per policy
+- **Don't rush**: Give teams time to absorb changes
+- **Batch adjustments**: Push one question, make all related adjustments, then move on
+
+### Strategic considerations
+
+<CardGroup cols={2}>
+  <Card title="Balance the economy" icon="scale-balanced">
+    Avoid adjusting all plots in one direction. Mix increases and decreases to create strategic opportunities.
+  </Card>
+  
+  <Card title="Create opportunities" icon="lightbulb">
+    Use adjustments to make previously undesirable plots attractive, encouraging diverse strategies.
+  </Card>
+  
+  <Card title="Narrative consistency" icon="book">
+    Match adjustment direction to the policy narrative (e.g., metro = increase, restrictions = decrease).
+  </Card>
+  
+  <Card title="Team equity" icon="users">
+    Consider how adjustments affect teams that already own plots in the affected areas.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Questions not loading
+
+If the question carousel is empty:
+
+1. Verify the backend API is running
+2. Check the endpoint: `GET /api/admin/questions/{round_number}`
+3. Ensure questions are configured for the current round
+4. Check the browser console for API errors
+
+### Adjustments not visible
+
+If teams don't see adjustments:
+
+1. Verify the adjustment was applied (check the plot status table)
+2. Ask teams to refresh the map or switch to "Changes" view
+3. Check the Socket.IO connection (green "Live" badge)
+4. Verify the backend broadcasted the `plot_adjustment` event
+
+### Undo not working
+
+If undo fails:
+
+1. Ensure there was a recent adjustment to undo
+2. Check that you're still in the same policy round
+3. Verify the backend API responds to `POST /api/admin/undo-adjustment`
+4. Check for error messages in the adjustment confirmation area
+
+### Map not updating
+
+If the map doesn't reflect adjustments:
+
+1. Ask teams to toggle between "Changes" and "Types" view
+2. Verify the `recentAdjustments` state is being updated
+3. Check that the Socket.IO `plot_adjustment` event includes the plot data
+4. Refresh the team dashboard
+
+## Technical details
+
+### Adjustment calculation
+
+The backend calculates adjustments as:
+
+```python
+base_value = plot.base_price * plot.actual_area
+adjustment_amount = base_value * (percentage / 100)
+plot.round_adjustment += adjustment_amount
+```
+
+### Current policy deltas
+
+The system tracks the **current policy's** adjustments separately:
+
+- Cleared when a new question is pushed
+- Used to highlight recently changed plots on the map
+- Persisted in the backend's `current_policy_deltas` field
+
+This allows the map to distinguish between:
+- Old adjustments from previous policy rounds (shown as normal)
+- New adjustments from the current policy (shown with pulsing highlights)
+
+### Socket.IO events
+
+Key events for policy rounds:
+
+```typescript
+// Admin pushes a question
+socket.emit("push_question", { policy_description: string })
+
+// Teams receive the question
+socket.on("active_question", { question: string })
+
+// Admin adjusts plots
+socket.emit("adjust_plot", { plot_numbers: number[], adjustment_percent: number })
+
+// Teams receive plot updates
+socket.on("plot_adjustment", { plot_number: number, plot: PlotData })
+```
+
+## Next steps
+
+<Card title="Running an auction" icon="gavel" href="/guides/running-auction">
+  Return to the main auction guide to learn about bidding rounds and final game procedures
+</Card>

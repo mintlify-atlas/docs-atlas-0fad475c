@@ -1,0 +1,373 @@
+---
+title: Auction control endpoints
+description: Admin endpoints for controlling auction flow and state
+---
+
+## Overview
+
+The auction control endpoints allow administrators to manage the auction lifecycle, including starting, pausing, advancing through plots, and managing rounds. All endpoints require admin authentication via password.
+
+## Authentication
+
+All admin endpoints require authentication. Include the admin password in the request body:
+
+```json
+{
+  "password": "your_admin_password"
+}
+```
+
+The admin password is verified against `ADMIN_PASSWORD` environment variable on the server.
+
+## Auction state management
+
+### POST /api/admin/start
+
+Start or resume the auction.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/start \
+  -H "Content-Type: application/json"
+```
+
+**Behavior:**
+- If auction status is `not_started`: Initializes the auction and begins with the first plot
+- If auction status is `paused`: Resumes from the current plot
+- If auction status is `completed`: Restarts the entire auction
+
+**Response:**
+
+<ResponseField name="status" type="string">
+  Current auction status: `"running"`, `"paused"`, or `"completed"`
+</ResponseField>
+
+<ResponseField name="current_plot_number" type="number">
+  The active plot number
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `auction_state_update`: Broadcasts new state to all connected clients
+
+---
+
+### POST /api/admin/pause
+
+Pause the currently running auction.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/pause \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Auction must be in `running` or `selling` state
+
+**Response:**
+
+<ResponseField name="status" type="string">
+  New auction status: `"paused"`
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `auction_state_update`: Notifies all clients that bidding is paused
+
+---
+
+### POST /api/admin/next
+
+Advance to the next plot in the auction sequence.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/next \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Auction must be in `running` state
+- Cannot advance beyond the last plot in the current round
+
+**Behavior:**
+- Marks current plot as sold (if it has a bid) or unsold
+- Activates the next plot in sequence
+- Updates auction state with new plot number
+
+**Response:**
+
+<ResponseField name="current_plot_number" type="number">
+  The newly activated plot number
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current auction status
+</ResponseField>
+
+**Socket.IO events emitted:**
+- `plot_update`: Updates the previous plot's final state
+- `auction_state_update`: Broadcasts the new active plot to all clients
+
+---
+
+### POST /api/admin/prev
+
+Go back to the previous plot in the auction sequence.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/prev \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Auction must be in `running` state
+- Current plot number must be greater than 1
+
+**Behavior:**
+- Reverts the current plot to `pending` status
+- Activates the previous plot
+- Resets bids on the previous plot
+
+**Response:**
+
+<ResponseField name="current_plot_number" type="number">
+  The reactivated previous plot number
+</ResponseField>
+
+**Socket.IO events emitted:**
+- `plot_update`: Updates both plots' statuses
+- `auction_state_update`: Notifies all clients of the state reversal
+
+---
+
+### POST /api/admin/sell
+
+Start the 3-second countdown to sell the current plot.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/sell \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Auction must be in `running` state
+- There must be an active plot
+
+**Behavior:**
+- Changes auction status to `selling`
+- Starts a 3-second countdown
+- After countdown, awards plot to highest bidder
+- Automatically advances to next plot
+
+**Response:**
+
+<ResponseField name="status" type="string">
+  New status: `"selling"`
+</ResponseField>
+
+<ResponseField name="selling_plot_number" type="number">
+  The plot being sold
+</ResponseField>
+
+**Socket.IO events emitted:**
+- `auction_state_update`: Broadcasts selling status with countdown
+- `plot_update`: Updates plot status to `sold` after countdown
+- `team_update`: Updates winning team's budget and plot count
+
+---
+
+## Round management
+
+### POST /api/admin/set-round
+
+Change the current auction round.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/set-round \
+  -H "Content-Type: application/json" \
+  -d '{
+    "round": 3
+  }'
+```
+
+**Parameters:**
+
+<ParamField body="round" type="number" required>
+  Round number (1-6):
+  - **Round 1**: Initial bidding phase
+  - **Round 2**: Policy adjustments
+  - **Round 3**: Policy adjustments
+  - **Round 4**: Sell & rebid phase
+  - **Round 5**: Policy adjustments
+  - **Round 6**: Final adjustments
+</ParamField>
+
+**Response:**
+
+<ResponseField name="current_round" type="number">
+  The newly set round number
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current auction status
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `round_change`: Notifies all clients of the round change
+
+---
+
+### POST /api/admin/reset
+
+Reset the entire auction to initial state.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/reset \
+  -H "Content-Type: application/json"
+```
+
+**Behavior:**
+- Resets all plots to `pending` status
+- Clears all bids
+- Resets team budgets to initial values
+- Sets round to 1
+- Sets status to `not_started`
+
+<Warning>
+This action is irreversible and will delete all auction progress.
+</Warning>
+
+**Response:**
+
+<ResponseField name="message" type="string">
+  Confirmation message: `"Auction reset successfully"`
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `auction_reset`: Forces all clients to reload their data
+
+---
+
+### POST /api/admin/end-game
+
+End the auction and show final leaderboard.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/end-game \
+  -H "Content-Type: application/json"
+```
+
+**Behavior:**
+- Sets auction status to `completed`
+- Triggers final leaderboard calculation
+- Displays final results to all teams
+
+**When to use:** After round 6 when all adjustments are complete.
+
+**Response:**
+
+<ResponseField name="status" type="string">
+  New status: `"completed"`
+</ResponseField>
+
+<ResponseField name="final_leaderboard" type="array">
+  Array of team rankings with final scores
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `auction_state_update`: Broadcasts completion status
+- `game_ended`: Triggers final leaderboard display on all client screens
+
+---
+
+## Round 4 special endpoints
+
+Round 4 has a unique two-phase system: sell phase and bid phase.
+
+### POST /api/admin/start-round4-sell
+
+Begin the sell phase where teams can list plots for resale.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/start-round4-sell \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Current round must be 4
+- Round 4 phase must not already be `sell`
+
+**Response:**
+
+<ResponseField name="round4_phase" type="string">
+  New phase: `"sell"`
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `round4_phase_update`: Notifies clients that sell phase has started
+
+---
+
+### POST /api/admin/start-round4-bidding
+
+End sell phase and begin bidding on unsold listed plots.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/start-round4-bidding \
+  -H "Content-Type: application/json"
+```
+
+**Requirements:**
+- Current round must be 4
+- Round 4 phase must be `sell`
+
+**Behavior:**
+- Closes sell phase (teams can no longer list plots)
+- Creates bid queue with all unsold listed plots
+- Activates first plot in bid queue
+
+**Response:**
+
+<ResponseField name="round4_phase" type="string">
+  New phase: `"bid"`
+</ResponseField>
+
+<ResponseField name="bid_queue" type="array">
+  Array of plot numbers available for bidding
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `round4_phase_update`: Broadcasts phase change with bid queue
+
+---
+
+## Error responses
+
+All endpoints may return the following errors:
+
+<ResponseField name="error" type="object">
+  <Expandable title="Error object structure">
+    <ResponseField name="detail" type="string">
+      Human-readable error message
+    </ResponseField>
+    
+    <ResponseField name="status_code" type="number">
+      HTTP status code (400, 401, 403, 500)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Common error codes:**
+
+| Status | Description |
+|--------|-------------|
+| 400 | Bad request - Invalid parameters or invalid state transition |
+| 401 | Unauthorized - Admin password required or incorrect |
+| 403 | Forbidden - Action not allowed in current auction state |
+| 500 | Internal server error |
+
+**Example error response:**
+
+```json
+{
+  "detail": "Cannot advance to next plot - auction is paused",
+  "status_code": 403
+}
+```

@@ -1,122 +1,101 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "AuctionFest",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#facc15",
+    "light": "#fef3c7",
+    "dark": "#ca8a04"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/SureshAmal/auctionfest-frontend"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/SureshAmal/auctionfest-frontend"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Features",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "features/team-dashboard",
+              "features/auction-mechanics",
+              "features/admin-panel",
+              "features/live-view"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/setup",
+              "guides/running-auction",
+              "guides/policy-rounds"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Components",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Neo Components",
             "pages": [
-              "api-reference/introduction"
+              "components/neo-button",
+              "components/neo-card",
+              "components/neo-input",
+              "components/neo-table"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Specialized",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "components/city-map",
+              "components/bid-card"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Data Endpoints",
+            "pages": [
+              "api/teams",
+              "api/plots",
+              "api/bids"
+            ]
+          },
+          {
+            "group": "Admin Endpoints",
+            "pages": [
+              "api/admin/controls",
+              "api/admin/adjustments"
+            ]
+          },
+          {
+            "group": "Real-time Events",
+            "pages": [
+              "api/socket-events"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

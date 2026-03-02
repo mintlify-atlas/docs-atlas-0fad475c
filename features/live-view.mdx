@@ -1,0 +1,390 @@
+---
+title: Live view
+description: Public spectator interface for real-time auction monitoring
+---
+
+The live view provides a public-facing display for spectators to watch the auction in real-time. It's designed for projection screens, large displays, or streaming to remote audiences.
+
+## Overview
+
+Access the live view at `/live` — no authentication required.
+
+**Purpose:**
+- Display auction progress to spectators
+- Show real-time bidding activity
+- Provide leaderboard visibility
+- Enhance event atmosphere
+
+<Info>
+  The live view is read-only. Spectators cannot place bids or control the auction.
+</Info>
+
+## Layout design
+
+The live view uses a two-panel layout optimized for large displays:
+
+### Left panel: Interactive map
+
+**Full-screen city map showing:**
+- All plots with boundaries
+- Color-coded by status (pending, active, sold)
+- Sold plots show owner team colors
+- Current plot highlighted
+- Policy adjustments visualized with +/- indicators
+
+**Map features:**
+- Pan and zoom enabled
+- Plots labeled with numbers
+- Team color legend
+- Sold count vs. total plots
+
+### Right panel: Dynamic content
+
+Content changes based on auction phase:
+
+<Tabs>
+  <Tab title="Bidding rounds (R1, R4)">
+    **Current plot details:**
+    - Plot number
+    - Base price
+    - Current bid amount
+    - Area (sq ft)
+    - Plot type (Round 4 only)
+    - Highest bidder name
+    - Adjustments (if any)
+    
+    **Visual hierarchy:**
+    - Large plot number header
+    - Prominent current bid display
+    - Highlighted highest bidder
+    - Color-coded adjustments
+  </Tab>
+  <Tab title="Policy rounds (R2, R3, R5, R6)">
+    **Policy question card:**
+    - Active policy question text
+    - Large, readable font
+    - Question icon
+    
+    **Live leaderboard:**
+    - Top 10 teams ranked by score
+    - Team names
+    - Current scores (abbreviated)
+    - Podium styling for top 3
+    - Real-time updates
+  </Tab>
+  <Tab title="Auction complete">
+    **Final leaderboard:**
+    - All teams ranked by final score
+    - Scores with ₹10 lakh plot bonus
+    - Podium medals (Gold, Silver, Bronze)
+    - Net worth and plots won details
+  </Tab>
+</Tabs>
+
+## Header information
+
+The header displays essential status info:
+
+**Status badges:**
+- **LIVE / OFF:** Connection status (green = connected, red = disconnected)
+- **R1-R6:** Current round indicator
+- **Auction status:** running, paused, completed, etc.
+
+**Plot counter:**
+- Shows sold plots vs. total plots
+- Example: "24/45" means 24 sold, 45 total
+
+<Note>
+  The live view automatically reconnects if the connection drops. The OFF badge appears briefly during reconnection.
+</Note>
+
+## Real-time updates
+
+### WebSocket events
+
+The live view listens for:
+
+- `auction_state_update` — Changes status, round, current plot
+- `bid_update` — Updates current bid and highest bidder
+- `plot_update` — Updates plot details (adjustments, ownership)
+- `plot_adjustment` — Shows adjustment changes on map
+- `round_change` — Switches round display
+- `active_question` — Displays policy question
+- `sync_state` — Full state refresh on reconnect
+
+**Update frequency:**
+- Instant bid updates (< 100ms)
+- Map recolors on plot sold
+- Leaderboard recalculates every bid
+- Smooth animations between states
+
+### Visual feedback
+
+Changes are animated for viewer engagement:
+
+- **New bid:** Bid amount pulses briefly
+- **Plot sold:** Map plot changes color with fade
+- **Leaderboard shift:** Teams slide up/down rankings
+- **Round change:** Fade transition between panels
+
+## Map features
+
+### Color coding
+
+**Plot status colors:**
+- **Gray:** Pending (not yet auctioned)
+- **Yellow:** Active (currently up for bids)
+- **Team colors:** Sold plots (shows owner)
+- **Red outline:** Unsold after auction
+
+**Adjustment indicators:**
+- **Green +:** Positive adjustment
+- **Red -:** Negative adjustment
+- **Number displayed:** Adjustment amount in lakhs
+
+### Current plot highlight
+
+The active plot features:
+- Thick border
+- Animated pulse effect
+- Zoomed-in view (optional)
+- Plot number overlay
+
+<Info>
+  During policy rounds, the map shows all plots equally with no "current" highlight.
+</Info>
+
+## Leaderboard display
+
+### Score calculation
+
+Leaderboard ranks teams by:
+
+```
+Final Score = Net Worth + (Plots Won × ₹10,00,000)
+
+Net Worth = Remaining Cash + Total Plot Values
+```
+
+**Example:**
+- Team A: ₹50 lakh cash + ₹200 lakh plots + 5 plots × ₹10 lakh = ₹300 lakh
+- Team B: ₹80 lakh cash + ₹180 lakh plots + 4 plots × ₹10 lakh = ₹300 lakh
+- Tie (resolved alphabetically)
+
+### Display format
+
+**Top 10 teams shown:**
+1. Rank badge (1-10)
+2. Team name (truncated if long)
+3. Score (abbreviated: "25.4Cr" or "180L")
+
+**Podium styling:**
+- **1st place:** Gold background, 🥇 icon
+- **2nd place:** Silver background, 🥈 icon
+- **3rd place:** Bronze background, 🥉 icon
+- **4th-10th:** Standard styling
+
+<Note>
+  The leaderboard only shows during policy rounds and after auction completion. During bidding rounds, the plot details card is displayed instead.
+</Note>
+
+## Use cases
+
+### Classroom display
+
+- Project live view on main screen
+- Students see auction progress
+- Leaderboard motivates competition
+- Map helps visualize property locations
+
+### Event streaming
+
+- Embed live view in OBS or streaming software
+- Spectators watch remotely
+- No authentication required
+- Responsive design adapts to stream resolution
+
+### Competition judging
+
+- Judges monitor team performance
+- See real-time scoring
+- Track plot acquisition strategies
+- Observe policy impact on portfolios
+
+### Analysis & replay
+
+- Record live view screen for post-game analysis
+- Review bidding patterns
+- Analyze policy effects
+- Study team strategies
+
+## Responsive design
+
+### Desktop (1920×1080+)
+
+- Two-column layout
+- Map fills left 65%
+- Details panel fills right 35%
+- Large fonts for readability
+
+### Tablet (768-1024px)
+
+- Stacked layout (map on top)
+- Reduced font sizes
+- Scrollable details panel
+- Compressed leaderboard
+
+### Mobile (< 768px)
+
+- Single column
+- Map 50% height
+- Details below map
+- Simplified leaderboard (top 5)
+
+<Warning>
+  The live view is optimized for landscape orientation. Portrait mode may clip content.
+</Warning>
+
+## Accessibility
+
+**High contrast mode:**
+- Bold borders on all elements
+- Clear color distinctions
+- Large text sizes (minimum 14px)
+
+**Screen reader support:**
+- ARIA labels on status badges
+- Alt text on map regions
+- Announced updates (optional)
+
+**Keyboard navigation:**
+- Tab through interactive elements
+- Enter to toggle map zoom
+- Esc to reset view
+
+## Performance optimization
+
+**Rendering:**
+- SVG map cached after first load
+- Virtual scrolling for long leaderboards
+- Debounced WebSocket updates
+- GPU-accelerated animations
+
+**Network:**
+- Automatic reconnection on disconnect
+- State sync on reconnect
+- Efficient WebSocket payload sizes
+- No polling (event-driven only)
+
+<Info>
+  The live view can handle 100+ spectators connected simultaneously without performance degradation.
+</Info>
+
+## Customization
+
+### Branding
+
+- Logo can be added to header
+- Team colors customizable in database
+- Theme supports light/dark modes
+- Color scheme adjustable via CSS variables
+
+### Display options
+
+**Environment variables:**
+- `SHOW_PLOT_TYPES`: Toggle plot type display
+- `LEADERBOARD_LIMIT`: Max teams to show
+- `MAP_ZOOM_LEVEL`: Default zoom
+- `ANIMATION_SPEED`: Transition duration
+
+### Language support
+
+- Text labels in English by default
+- Currency formatted as Indian Rupees (₹)
+- Number formatting: Indian notation (lakh, crore)
+- Dates/times in local timezone
+
+## Technical details
+
+### Connection flow
+
+1. Page loads, connects to WebSocket server
+2. Emits `join_auction` with role "public"
+3. Server sends full state sync
+4. Live view renders initial state
+5. Subscribes to real-time events
+6. Maintains heartbeat for connection health
+
+### State management
+
+**Local state:**
+- `plots`: Array of all plot data
+- `teams`: Array of all team data
+- `currentPlot`: Active plot object
+- `auctionStatus`: Auction state string
+- `currentRound`: 1-6 round number
+- `currentQuestion`: Policy question text
+
+**Derived state:**
+- Leaderboard (computed from teams + plots)
+- Map colors (computed from plot status)
+- Score formatting (computed on render)
+
+### Error handling
+
+**Connection errors:**
+- Red "OFF" badge appears
+- Automatic reconnection attempts every 5s
+- Full state sync on reconnect
+- Error logged to console
+
+**Data errors:**
+- Missing plots render as gray
+- Invalid teams show as "Unknown"
+- Malformed scores display as "—"
+- Continues operation despite errors
+
+<Note>
+  The live view is resilient to partial data loss. It gracefully handles missing or corrupted information.
+</Note>
+
+## Comparison with team dashboard
+
+| Feature | Team Dashboard | Live View |
+|---------|----------------|----------|
+| Authentication | Required (team login) | None |
+| Bidding | Yes | No |
+| Budget display | Own team only | None |
+| Leaderboard | All teams | Top 10 |
+| Map | Interactive | Display only |
+| Plot details | Full for current plot | Basic summary |
+| Real-time updates | Yes | Yes |
+| Round transitions | Automatic | Automatic |
+
+## Best practices
+
+### For event organizers
+
+- Test live view before event starts
+- Use wired connection for projector
+- Set display to 1920×1080 resolution
+- Disable screen saver and sleep mode
+- Bookmark `/live` for quick access
+
+### For remote viewers
+
+- Use fullscreen mode for best experience
+- Refresh page if connection drops
+- Landscape orientation recommended
+- Stable internet connection required
+
+### For recording
+
+- Set recording resolution to 1080p
+- Capture audio separately (ambient sound)
+- Use OBS browser source for `/live` URL
+- Disable browser UI (fullscreen)
+
+<Info>
+  For a clean recording, use the live view in an incognito/private browser window to avoid extensions or bookmarks appearing.
+</Info>

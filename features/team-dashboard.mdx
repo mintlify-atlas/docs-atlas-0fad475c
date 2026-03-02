@@ -1,0 +1,248 @@
+---
+title: Team dashboard
+description: Real-time bidding interface for teams to manage their auction participation
+---
+
+The team dashboard is the primary interface for teams during the AuctionFest simulation. It provides real-time updates on auction progress, budget tracking, and interactive bidding controls.
+
+## Overview
+
+Teams use the dashboard to:
+- Monitor their remaining budget and portfolio value
+- View the current plot up for auction
+- Place bids during active rounds
+- Track plot adjustments during policy rounds
+- View their owned plots and leaderboard standings
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Budget display" icon="wallet">
+    Real-time tracking of cash, plots value, and total net worth
+  </Card>
+  <Card title="Live bidding" icon="gavel">
+    Interactive bid controls with +/- increment buttons
+  </Card>
+  <Card title="Plot visualization" icon="map">
+    Animated SVG display of the current plot shape
+  </Card>
+  <Card title="Real-time updates" icon="signal">
+    WebSocket-powered live data sync across all teams
+  </Card>
+</CardGroup>
+
+## Dashboard layout
+
+The dashboard uses a responsive three-column layout that adapts to different screen sizes.
+
+### Header section
+
+The header displays critical information at a glance:
+
+<Info>
+  **Connection status** — Shows whether the team is connected to the live auction (Live/Offline)
+</Info>
+
+**Budget breakdown:**
+- **Cash** — Remaining unspent budget
+- **Plots** — Total value of owned plots (including adjustments)
+- **Net Worth** — Sum of cash and plot values
+
+**Team identifier:**
+- Team name with color-coded badge
+- Quick logout button
+
+### Left panel: Plot visualization
+
+Displays an animated SVG representation of the current plot:
+
+- Plot number badge overlay
+- Animated drawing effect when new plots appear
+- During selling phase: Red countdown overlay (3-2-1)
+- Responsive scaling for different screen sizes
+
+<Note>
+  Plot shapes are loaded from `/plots_svg/{number}.svg` and rendered with smooth animations using Framer Motion.
+</Note>
+
+### Center panel: Plot details & bidding
+
+#### During bidding rounds (Round 1 & 4)
+
+**Plot information card:**
+- Base price
+- Total area (sq ft)
+- Current adjustments (if any)
+- Plot type (Round 4 only)
+
+**Bid input interface:**
+
+<Tabs>
+  <Tab title="Placing a bid">
+    1. Press the **+** button to activate bidding
+    2. Use +/- buttons to adjust bid amount (increments of ₹5 lakh)
+    3. Review the "If Bid Won" projection showing remaining cash
+    4. Click **PLACE BID** to submit
+  </Tab>
+  <Tab title="Bid validation">
+    - Minimum bid: Current bid + ₹1 lakh
+    - Cannot bid if you already hold the highest bid
+    - Cannot exceed remaining budget
+    - Cannot bid on plots you're selling (Round 4)
+  </Tab>
+  <Tab title="Bid feedback">
+    - Success: Green confirmation message
+    - Error: Red alert with specific reason
+    - Real-time update of current highest bidder
+  </Tab>
+</Tabs>
+
+#### During policy rounds (Round 2, 3, 5, 6)
+
+**Policy question display:**
+- Large card showing the active policy question from the admin
+- Map view showing all plots with color-coded adjustments
+- No bidding allowed during these rounds
+
+**Visual indicators:**
+- Green highlights for positive adjustments
+- Red highlights for negative adjustments
+- Adjustment amounts shown on map
+
+<Warning>
+  Teams cannot place bids during adjustment rounds. The bid interface is replaced with a "Adjustment Round" waiting message.
+</Warning>
+
+### Right panel: Activity & leaderboard
+
+Depending on the auction phase, this panel shows:
+
+**During bidding rounds:**
+- Recent bid activity (last 10 bids)
+- Bid amount, team name, and timestamp
+- Current plot's bid history
+
+**During policy rounds:**
+- Team leaderboard ranked by final score
+- Each team's net worth and plots owned
+- Real-time score updates
+
+**Final leaderboard (auction complete):**
+- Full-screen leaderboard with podium styling
+- Gold/Silver/Bronze medals for top 3
+- Final scores with ₹10 lakh bonus per plot
+
+## Round-specific features
+
+### Round 4: Rebid marketplace
+
+During Round 4's sell phase, the dashboard transforms into a marketplace:
+
+**My Portfolio section:**
+- Lists all plots owned by the team
+- Shows current value with adjustments
+- Sell interface with price input (100-110% of current value)
+- Active listings show asking price and "Waiting for buyer" status
+- Option to unsell plots before they're purchased
+
+<Accordion title="How selling works in Round 4">
+  1. Admin activates the "Sell Phase"
+  2. Teams can list their plots for 100-110% of current value
+  3. Listed plots appear in the marketplace for other teams
+  4. When admin starts "Bid Phase", unsold listings go to auction
+  5. Original sellers cannot bid on their own listed plots
+</Accordion>
+
+### Round 6: End game
+
+When the auction completes after Round 6:
+
+- Full-screen final leaderboard appears
+- Teams ranked by: Net Worth + (Plots Won × ₹10 lakh)
+- Animated podium for top 3 teams
+- No further actions available
+
+## Real-time features
+
+### WebSocket events
+
+The dashboard listens for live updates:
+
+- `new_bid` — Updates current highest bid and winner
+- `auction_state_update` — Changes auction status and current plot
+- `plot_adjustment` — Updates plot values during policy rounds
+- `team_update` — Refreshes budget, spent, and plots won
+- `round_change` — Switches round and updates UI
+- `active_question` — Displays policy question
+- `rebid_phase_update` — Activates Round 4 marketplace
+
+### Connection management
+
+<Info>
+  Teams are automatically connected when they log in. If multiple devices connect with the same team ID, only the most recent connection remains active.
+</Info>
+
+**Connection rejected scenarios:**
+- Team is banned by admin
+- Another device is already connected with this team ID
+- Auction has been reset
+
+**Banned screen:**
+- Red full-screen overlay with alert message
+- Cannot reconnect until admin unbans
+- LocalStorage cleared on ban
+
+## User workflows
+
+### Typical bidding workflow
+
+1. Monitor the left panel for new plot appearance
+2. Review plot details (area, base price, adjustments)
+3. Check remaining budget in header
+4. Activate bid by pressing +
+5. Adjust amount using +/- buttons
+6. Verify projected balance
+7. Submit bid
+8. Watch for success/error message
+9. Repeat for next plot
+
+### Portfolio management (Round 4)
+
+1. Review owned plots in "My Portfolio"
+2. Decide which plots to sell
+3. Enter asking price (within 100-110% range)
+4. Click SELL to list
+5. Monitor for buyers
+6. Option to UNSELL before purchase
+7. When bid phase starts, watch for your listed plots in auction
+
+## Design system
+
+The dashboard uses the **Neo Brutalism** design system:
+
+- Bold black borders on all cards
+- High contrast colors
+- Thick drop shadows (4px offset)
+- Uppercase labels and headings
+- Monospace fonts for numbers
+- Instant hover/click feedback (no smooth transitions)
+
+<Note>
+  The theme can be toggled between light and dark modes using the theme switcher in the header.
+</Note>
+
+## Performance considerations
+
+- SVG plots are cached after first load
+- WebSocket events are debounced to prevent UI flicker
+- Large leaderboards virtualize rendering
+- Plot animations are GPU-accelerated
+- Real-time updates use optimistic UI patterns
+
+## Accessibility
+
+- High contrast mode support
+- Keyboard navigation for bid controls
+- Screen reader labels on interactive elements
+- Clear error messages with color + icon + text
+- Large touch targets (48px minimum)

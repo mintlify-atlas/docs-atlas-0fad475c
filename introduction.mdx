@@ -1,0 +1,148 @@
+---
+title: Welcome to AuctionFest
+description: A real-time interactive auction platform for urban planning simulations with a bold neo-brutalist design
+---
+
+## What is AuctionFest?
+
+AuctionFest (also known as Planomics Auction) is a real-time, multi-team auction platform designed for urban planning games and educational simulations. Teams compete to acquire plots of land across a virtual city through strategic bidding across six dynamic rounds.
+
+<CardGroup cols={2}>
+  <Card title="Live bidding system" icon="gavel" iconType="duotone">
+    Real-time Socket.IO-powered auctions with instant updates across all connected clients
+  </Card>
+  <Card title="6-round auction system" icon="chart-line" iconType="duotone">
+    Strategic gameplay with bidding rounds (1, 4) and policy adjustment rounds (2, 3, 5, 6)
+  </Card>
+  <Card title="Budget management" icon="indian-rupee-sign" iconType="duotone">
+    Track cash, portfolio value, and net worth in real-time as you compete
+  </Card>
+  <Card title="Neo-brutalist UI" icon="paintbrush" iconType="duotone">
+    Bold, high-contrast design with custom theme system and dynamic color schemes
+  </Card>
+</CardGroup>
+
+## Key features
+
+### Real-time Socket.IO connection
+
+All teams connect through persistent WebSocket connections for instant bid updates, plot adjustments, and live leaderboard changes:
+
+```typescript
+// from context/socket-context.tsx:44
+const socketUrl =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  `http://${window.location.hostname || "localhost"}:8000`;
+
+globalSocket = io(socketUrl, {
+  transports: ["polling", "websocket"],
+  upgrade: true,
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+});
+```
+
+### Team authentication
+
+Teams log in using their team name and passcode. The system stores the team ID in localStorage for session persistence:
+
+```typescript
+// from app/page.tsx:58
+localStorage.setItem("team_id", team.id);
+router.push("/dashboard");
+```
+
+### Interactive plot visualization
+
+Each plot is rendered as an animated SVG polygon with dynamic highlighting based on ownership and status:
+
+```typescript
+// from app/dashboard/page.tsx:70
+<motion.polygon
+  points={svgData.points}
+  fill="rgba(250, 204, 21, 0.5)"
+  stroke="#facc15"
+  strokeWidth="4"
+  initial={{ pathLength: 0, fillOpacity: 0 }}
+  animate={{ pathLength: 1, fillOpacity: 0.5 }}
+  transition={{
+    pathLength: { duration: 1.5, ease: "easeInOut" },
+    fillOpacity: { duration: 1, delay: 0.8 },
+  }}
+/>
+```
+
+## The auction flow
+
+<Steps>
+  <Step title="Round 1 — Initial bidding">
+    Teams bid on plots with starting prices. Admin controls plot presentation and timing.
+  </Step>
+  <Step title="Rounds 2 & 3 — Policy adjustments">
+    Admin presents policy questions that affect plot values. Teams see adjustments reflected in real-time.
+  </Step>
+  <Step title="Round 4 — Final bidding + rebid market">
+    Teams can sell owned plots at markup (1x–1.1x value) or bid on new/resold plots.
+  </Step>
+  <Step title="Rounds 5 & 6 — Final adjustments">
+    Last policy changes before final scores are calculated.
+  </Step>
+  <Step title="Final leaderboard">
+    Score = Net Worth + (₹10,00,00,000 × plots owned)
+  </Step>
+</Steps>
+
+## Architecture
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="react" href="https://nextjs.org">
+    **Next.js 16** with React 19, TypeScript, and Tailwind CSS
+  </Card>
+  <Card title="Real-time" icon="bolt" href="https://socket.io">
+    **Socket.IO** for bidirectional WebSocket communication
+  </Card>
+  <Card title="UI Framework" icon="palette">
+    Custom **Neo-brutalist** component library with theme system
+  </Card>
+  <Card title="Animation" icon="sparkles" href="https://www.framer.com/motion/">
+    **Framer Motion** for smooth transitions and micro-interactions
+  </Card>
+</CardGroup>
+
+## Get started
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Set up your account and place your first bid in minutes
+  </Card>
+  <Card
+    title="Team dashboard"
+    icon="gauge-high"
+    href="/features/team-dashboard"
+  >
+    Explore budget tracking, plot visualization, and bidding controls
+  </Card>
+  <Card
+    title="Auction mechanics"
+    icon="gears"
+    href="/features/auction-mechanics"
+  >
+    Learn about the 6-round system and rebid marketplace
+  </Card>
+  <Card
+    title="Admin panel"
+    icon="user-shield"
+    href="/features/admin-panel"
+  >
+    Control auction flow, apply adjustments, and manage teams
+  </Card>
+</CardGroup>
+
+<Note>
+  **Tech stack:** Next.js 16 • React 19 • TypeScript • Socket.IO • Tailwind CSS • Framer Motion
+</Note>

@@ -1,0 +1,591 @@
+---
+title: Socket.IO events
+description: Real-time WebSocket events for live auction updates
+---
+
+## Overview
+
+AuctionFest uses Socket.IO for real-time bidirectional communication between clients and the server. This page documents all available Socket.IO events for both client-to-server (emit) and server-to-client (on) communication.
+
+## Connection setup
+
+All clients connect to the Socket.IO server using the `SocketProvider` context:
+
+```tsx context/socket-context.tsx
+const socketUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
+  `http://${window.location.hostname}:8000`;
+
+const socket = io(socketUrl, {
+  transports: ["polling", "websocket"],
+  upgrade: true,
+  rememberUpgrade: true,
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 30000,
+});
+```
+
+## Client emits (outgoing events)
+
+Events sent from the client to the server.
+
+### join_auction
+
+Join an auction room with team credentials or role.
+
+<Tabs>
+  <Tab title="Team client">
+    ```tsx app/dashboard/page.tsx
+    socket.emit("join_auction", { 
+      team_id: userTeam.id 
+    });
+    ```
+
+    **Payload:**
+    - `team_id` (string): The team's unique identifier
+
+    **When to use:** Called automatically when a team member connects or reconnects to their dashboard.
+  </Tab>
+  
+  <Tab title="Admin client">
+    ```tsx app/admin/page.tsx
+    socket.emit("join_auction", { 
+      role: "admin" 
+    });
+    ```
+
+    **Payload:**
+    - `role` (string): `"admin"` for administrative access
+
+    **When to use:** Called when the admin panel connects to monitor and control the auction.
+  </Tab>
+  
+  <Tab title="Public/Live view">
+    ```tsx app/live/page.tsx
+    socket.emit("join_auction", { 
+      role: "public" 
+    });
+    ```
+
+    **Payload:**
+    - `role` (string): `"public"` or `"leaderboard"` for read-only access
+
+    **When to use:** Called by public spectator views to receive auction updates without bidding capabilities.
+  </Tab>
+</Tabs>
+
+### leave_auction
+
+Gracefully disconnect from the auction room.
+
+```tsx app/dashboard/page.tsx
+socket.emit("leave_auction");
+```
+
+**When to use:** Called before logout or when navigating away from the auction.
+
+### place_bid
+
+Submit a bid for the current active plot.
+
+```tsx components/BidCard.tsx
+socket.emit("place_bid", {
+  team_id: team.id,
+  plot_number: currentPlot.number,
+  amount: bidAmount,
+});
+```
+
+**Payload:**
+- `team_id` (string): Team placing the bid
+- `plot_number` (number): The plot being bid on
+- `amount` (number): Bid amount in currency
+
+**Response:** Server broadcasts `new_bid` or `bid_error` events.
+
+## Server emits (incoming events)
+
+Events received from the server by connected clients.
+
+### auction_state_update
+
+Broadcast whenever the auction state changes (status, current plot, round).
+
+```tsx app/dashboard/page.tsx
+socket.on("auction_state_update", (data) => {
+  setAuctionStatus(data.status);
+  setCurrentRound(data.current_round);
+  setCurrentPlot(data.current_plot);
+  setActiveQuestion(data.current_question);
+});
+```
+
+**Payload:**
+```typescript
+{
+  status: "running" | "paused" | "selling" | "completed" | "not_started" | "reversed",
+  current_round: number,
+  current_plot: Plot | null,
+  current_plot_number: number | null,
+  current_question: string | null,
+  rebid_phase_active: boolean
+}
+```
+
+**When triggered:** 
+- Auction starts/pauses/resumes
+- Moving to next/previous plot
+- Round transitions
+- Policy questions activated
+
+### new_bid
+
+Broadcast when a new bid is placed on any plot.
+
+```tsx app/dashboard/page.tsx
+socket.on("new_bid", (data) => {
+  setCurrentPlot(prev => ({
+    ...prev,
+    current_bid: data.amount,
+    winner_team_id: data.team_id
+  }));
+  setRecentBids(prev => [data, ...prev].slice(0, 10));
+});
+```
+
+**Payload:**
+```typescript
+{
+  plot_number: number,
+  team_id: string,
+  amount: number,
+  timestamp: string
+}
+```
+
+### plot_update
+
+Broadcast when plot data is updated (status change, price updates).
+
+```tsx app/live/page.tsx
+socket.on("plot_update", (data) => {
+  setPlots(prev => prev.map(p => 
+    p.number === data.number ? { ...p, ...data } : p
+  ));
+});
+```
+
+**Payload:**
+```typescript
+{
+  number: number,
+  status: "pending" | "active" | "sold" | "unsold",
+  current_bid: number | null,
+  winner_team_id: string | null,
+  total_plot_price: number,
+  round_adjustment: number
+}
+```
+
+### plot_adjustment
+
+Broadcast when plot values are adjusted during policy rounds.
+
+```tsx app/dashboard/page.tsx
+socket.on("plot_adjustment", (data) => {
+  setPlots(prev => prev.map(p =>
+    p.number === data.plot_number 
+      ? { ...p, round_adjustment: data.plot.round_adjustment }
+      : p
+  ));
+});
+```
+
+**Payload:**
+```typescript
+{
+  plot_number: number,
+  plot: {
+    round_adjustment: number,
+    total_plot_price: number
+  }
+}
+```
+
+**When triggered:** Admin applies percentage-based adjustments during Rounds 2, 3, 5, and 6.
+
+### team_update
+
+Broadcast when a team's financial data changes.
+
+```tsx app/dashboard/page.tsx
+socket.on("team_update", (data) => {
+  setUserTeam(prev => ({
+    ...prev,
+    spent: data.spent,
+    budget: data.budget,
+    plots_won: data.plots_won
+  }));
+});
+```
+
+**Payload:**
+```typescript
+{
+  id: string,
+  team_id: string,
+  spent: number,
+  budget: number,
+  plots_won: number
+}
+```
+
+**When triggered:** After successful bids or plot sales.
+
+### round_change
+
+Broadcast when the auction moves to a new round.
+
+```tsx app/dashboard/page.tsx
+socket.on("round_change", (data) => {
+  setCurrentRound(data.current_round);
+});
+```
+
+**Payload:**
+```typescript
+{
+  current_round: number
+}
+```
+
+### active_question
+
+Broadcast when a policy question is pushed to teams during adjustment rounds.
+
+```tsx app/dashboard/page.tsx
+socket.on("active_question", (data) => {
+  setActiveQuestion(data.question);
+  setRecentAdjustments({}); // Clear previous adjustments
+});
+```
+
+**Payload:**
+```typescript
+{
+  question: string
+}
+```
+
+**When triggered:** Admin pushes a policy question during Rounds 2, 3, 5, or 6.
+
+### rebid_phase_update
+
+Broadcast when the rebid marketplace phase toggles on/off.
+
+```tsx app/dashboard/page.tsx
+socket.on("rebid_phase_update", (data) => {
+  setRebidPhaseActive(data.is_active);
+});
+```
+
+**Payload:**
+```typescript
+{
+  is_active: boolean
+}
+```
+
+**When triggered:** During Round 4 when teams can sell their plots.
+
+### new_rebid_offer
+
+Broadcast when a team lists a plot for sale in the rebid marketplace.
+
+```tsx app/dashboard/page.tsx
+socket.on("new_rebid_offer", (offer) => {
+  setRebidOffers(prev => [offer, ...prev]);
+});
+```
+
+**Payload:**
+```typescript
+{
+  id: number,
+  plot_number: number,
+  team_id: string,
+  team_name: string,
+  asking_price: number,
+  status: "active"
+}
+```
+
+### rebid_offer_sold
+
+Broadcast when a rebid offer is successfully purchased.
+
+```tsx app/dashboard/page.tsx
+socket.on("rebid_offer_sold", (offer) => {
+  setRebidOffers(prev => prev.filter(o => o.id !== offer.id));
+  setRebidOffersSold(prev => [offer, ...prev]);
+});
+```
+
+**Payload:**
+```typescript
+{
+  id: number,
+  plot_number: number,
+  seller_team_id: string,
+  buyer_team_id: string,
+  asking_price: number,
+  status: "sold"
+}
+```
+
+### rebid_offer_cancelled
+
+Broadcast when a team cancels their sell offer (unsells a plot).
+
+```tsx app/dashboard/page.tsx
+socket.on("rebid_offer_cancelled", (offer) => {
+  setRebidOffers(prev => prev.filter(o => o.id !== offer.id));
+});
+```
+
+**Payload:**
+```typescript
+{
+  id: number,
+  plot_number: number,
+  team_id: string
+}
+```
+
+### round4_phase_update
+
+Broadcast during Round 4 to indicate sell vs. bid phase.
+
+```tsx app/dashboard/page.tsx
+socket.on("round4_phase_update", (data) => {
+  setRound4Phase(data.phase);
+  if (data.phase === "sell") {
+    setRebidPhaseActive(true);
+  } else if (data.phase === "bid") {
+    setRebidPhaseActive(false);
+  }
+});
+```
+
+**Payload:**
+```typescript
+{
+  phase: "sell" | "bid" | null,
+  bid_queue: number[]
+}
+```
+
+**When triggered:** Admin transitions between selling phase (teams list plots) and bidding phase (teams bid on listed plots).
+
+### connection_rejected
+
+Sent to a client whose connection was rejected.
+
+```tsx app/dashboard/page.tsx
+socket.on("connection_rejected", (data) => {
+  console.error("Connection rejected:", data.message);
+  setConnectionRejected(data.message);
+  socket.disconnect();
+});
+```
+
+**Payload:**
+```typescript
+{
+  message: string
+}
+```
+
+**When triggered:** Duplicate team login, banned team, or invalid credentials.
+
+### banned
+
+Broadcast when a team is banned by admin.
+
+```tsx app/dashboard/page.tsx
+socket.on("banned", (data) => {
+  setConnectionRejected(data.message || "Your team has been banned.");
+  socket.disconnect();
+  localStorage.clear();
+});
+```
+
+**Payload:**
+```typescript
+{
+  message: string
+}
+```
+
+### auction_reset
+
+Broadcast when admin resets the entire auction.
+
+```tsx app/dashboard/page.tsx
+socket.on("auction_reset", () => {
+  window.location.reload();
+});
+```
+
+**When triggered:** Admin clicks the RESET button.
+
+### connection_count
+
+Sent to admin with current connection statistics.
+
+```tsx app/admin/page.tsx
+socket.on("connection_count", (data) => {
+  setConnectedCount(data.count);
+  setConnectedTeams(data.teams || []);
+});
+```
+
+**Payload:**
+```typescript
+{
+  count: number,
+  teams: string[]
+}
+```
+
+### bid_error / exception
+
+Error events for failed bid attempts.
+
+```tsx components/BidCard.tsx
+socket.on("bid_error", (error) => {
+  setErrorMessage(error.message || "Bid failed");
+});
+
+socket.on("exception", (error) => {
+  setErrorMessage(error.message || "An error occurred");
+});
+```
+
+**Payload:**
+```typescript
+{
+  message: string,
+  code?: string
+}
+```
+
+### sync_state
+
+Full state synchronization (used by leaderboard and live views).
+
+```tsx app/live/page.tsx
+socket.on("sync_state", (data) => {
+  if (data.plots) setPlots(data.plots);
+  if (data.teams) setTeams(data.teams);
+  if (data.status) setAuctionStatus(data.status);
+  if (data.current_round) setCurrentRound(data.current_round);
+});
+```
+
+**Payload:**
+```typescript
+{
+  plots: Plot[],
+  teams: Team[],
+  status: string,
+  current_round: number,
+  current_question: string | null
+}
+```
+
+### theme_update
+
+Broadcast when admin changes the global theme.
+
+```tsx context/ThemeProvider.tsx
+socket.on("theme_update", (data) => {
+  setTheme(data.theme);
+});
+```
+
+**Payload:**
+```typescript
+{
+  theme: "light" | "dark" | "neo" | "retro"
+}
+```
+
+## Connection lifecycle
+
+```tsx
+// Auto-reconnect on disconnect
+socket.on("connect", () => {
+  socket.emit("join_auction", { team_id: userTeam.id });
+});
+
+socket.on("disconnect", (reason) => {
+  console.log("Disconnected:", reason);
+  setIsConnected(false);
+});
+
+socket.on("connect_error", (err) => {
+  console.warn("Connection error:", err.message);
+  setIsConnected(false);
+});
+
+socket.io.on("reconnect", (attempt) => {
+  console.log("Reconnected after", attempt, "attempts");
+  setIsConnected(true);
+});
+```
+
+## Error handling
+
+All socket operations should implement error handling:
+
+```tsx
+try {
+  socket.emit("place_bid", bidData);
+} catch (error) {
+  console.error("Failed to emit bid:", error);
+}
+
+socket.on("bid_error", (error) => {
+  alert(error.message);
+});
+```
+
+## Best practices
+
+1. **Always clean up listeners** in React useEffect cleanup:
+   ```tsx
+   useEffect(() => {
+     socket.on("new_bid", handleNewBid);
+     
+     return () => {
+       socket.off("new_bid", handleNewBid);
+     };
+   }, [socket]);
+   ```
+
+2. **Use refs for latest state** in socket handlers to avoid stale closures:
+   ```tsx
+   const userTeamRef = useRef(userTeam);
+   
+   useEffect(() => {
+     userTeamRef.current = userTeam;
+   }, [userTeam]);
+   ```
+
+3. **Throttle high-frequency events** if needed to prevent UI stuttering.
+
+4. **Reconnect automatically** on disconnect using built-in Socket.IO retry logic.

@@ -1,0 +1,356 @@
+---
+title: BidCard
+description: Interactive card component for placing bids on auction plots
+---
+
+The `BidCard` component provides the primary bidding interface for teams during auction rounds. It displays current plot pricing, allows users to place bids, and provides real-time feedback on bid status.
+
+## Features
+
+- **Increment/decrement controls** for easy bid adjustment
+- **Real-time budget validation** before submission
+- **Socket-based bid placement** with instant feedback
+- **Countdown display** during "selling" phase
+- **Round-aware interface** that adapts to auction phases
+- **Sold plot celebration** with animated overlay
+
+## Props
+
+<ParamField path="currentPlot" type="any" required>
+  The currently active plot object being auctioned. Should include:
+  - `number`: Plot identifier
+  - `current_bid`: Current highest bid amount
+  - `total_plot_price`: Base plot price
+  - `round_adjustment`: Policy adjustment amount
+  - `winner_team_id`: ID of current highest bidder
+  - `base_price`: Original base price
+  - `status`: Plot status
+  - `plot_type`: Type classification (Round 4)
+</ParamField>
+
+<ParamField path="userTeam" type="any" required>
+  The logged-in user's team object. Should include:
+  - `id`: Team identifier
+  - `name`: Team name
+  - `budget`: Total budget
+  - `spent`: Amount already spent
+</ParamField>
+
+<ParamField path="allTeams" type="any[]">
+  Array of all teams for name lookup and display.
+</ParamField>
+
+<ParamField path="currentRound" type="number">
+  Current auction round (1-6). Defaults to 1.
+</ParamField>
+
+<ParamField path="auctionStatus" type="string">
+  The current auction status. Possible values:
+  - `"not_started"`: Auction hasn't begun
+  - `"running"`: Normal bidding active
+  - `"selling"`: Countdown to plot sale
+  - `"paused"`: Auction temporarily paused
+  - `"completed"`: Auction finished
+</ParamField>
+
+<ParamField path="className" type="string">
+  Optional parent className for styling.
+</ParamField>
+
+## Bidding rules
+
+### Minimum bid calculation
+
+The minimum bid is calculated as:
+- If there's an existing bid: `current_bid + ₹1,00,000`
+- If no bids yet: `adjusted_value` (base price + adjustments) or `₹1,00,000`, whichever is higher
+
+### Bid increment
+
+The +/- buttons adjust bids by `₹5,00,000` (5 lakhs) per click.
+
+### Validation rules
+
+1. **Consecutive bid prevention**: Teams cannot bid consecutively on the same plot
+2. **Budget check**: Bid amount cannot exceed remaining team budget
+3. **Minimum bid**: Must meet or exceed minimum bid amount
+4. **Activation required**: Users must press + or - before placing bid
+5. **Round restriction**: Bidding only allowed in rounds 1 and 4
+6. **Seller restriction**: In Round 4, plot owners cannot bid on their own plots (if current bid is 0)
+
+## Usage examples
+
+### Basic usage in dashboard
+
+```tsx
+import BidCard from '@/components/BidCard';
+
+export default function Dashboard() {
+  const [userTeam, setUserTeam] = useState(null);
+  const [currentPlot, setCurrentPlot] = useState(null);
+  const [allTeams, setAllTeams] = useState([]);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [auctionStatus, setAuctionStatus] = useState('not_started');
+
+  return (
+    <div className="w-full max-w-md">
+      <BidCard
+        currentPlot={currentPlot}
+        userTeam={userTeam}
+        allTeams={allTeams}
+        currentRound={currentRound}
+        auctionStatus={auctionStatus}
+      />
+    </div>
+  );
+}
+```
+
+### With socket integration
+
+```tsx
+import { useSocket } from '@/context/socket-context';
+import BidCard from '@/components/BidCard';
+
+export default function BiddingInterface() {
+  const { socket } = useSocket();
+  const [currentPlot, setCurrentPlot] = useState(null);
+  const [userTeam, setUserTeam] = useState(null);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for bid updates
+    socket.on('new_bid', (data) => {
+      setCurrentPlot(prev => prev ? {
+        ...prev,
+        current_bid: data.amount,
+        winner_team_id: data.team_id
+      } : null);
+    });
+
+    // Listen for plot sold
+    socket.on('plot_sold_summary', (data) => {
+      console.log('Plot sold:', data);
+    });
+
+    return () => {
+      socket.off('new_bid');
+      socket.off('plot_sold_summary');
+    };
+  }, [socket]);
+
+  return (
+    <BidCard
+      currentPlot={currentPlot}
+      userTeam={userTeam}
+      allTeams={allTeams}
+      currentRound={currentRound}
+      auctionStatus={auctionStatus}
+    />
+  );
+}
+```
+
+### Round 4 final bidding
+
+```tsx
+<BidCard
+  currentPlot={currentPlot}
+  userTeam={userTeam}
+  allTeams={allTeams}
+  currentRound={4}
+  auctionStatus="running"
+  className="border-4 border-red-500"
+/>
+```
+
+In Round 4, the component:
+- Displays a "Final Bidding" badge
+- Shows plot type information
+- Prevents original owners from bidding if no bids placed
+- Uses adjusted plot values as base price
+
+## Display states
+
+### Loading state
+
+When `currentPlot` is null:
+```tsx
+<div className="flex items-center justify-center">
+  <Loader2 className="animate-spin" />
+  <p>Waiting for next plot...</p>
+</div>
+```
+
+### Sold summary overlay
+
+When a plot is sold, shows 3-second celebration overlay:
+- Trophy icon with bounce animation
+- Plot number
+- Winner team name
+- Final sale price
+
+### Adjustment round message
+
+During rounds 2, 3, 5, 6 (policy/adjustment rounds):
+```tsx
+<div className="text-center">
+  <Clock size={48} />
+  <h3>Adjustment Round</h3>
+  <p>Waiting for admin to apply adjustments...</p>
+</div>
+```
+
+### Selling countdown
+
+When `auctionStatus === "selling"`:
+- Shows pulsing danger banner
+- Displays "GOING..." header
+- Shows current highest bidder and amount
+- Or "NO BIDS RECEIVED" if no bids placed
+
+## Bid interface components
+
+### Current price display
+
+Shows either:
+- **"Starting Price"**: If no bids placed (uses adjusted value)
+- **"Current Highest Bid"**: If bids exist (uses actual bid amount)
+
+Also displays the team name of the highest bidder.
+
+### Projected balance
+
+When user enters a bid amount or is currently winning:
+```
+If Bid Won: ₹ [remaining budget - bid amount]
+```
+
+Helps users understand budget impact before submitting.
+
+### Bid input controls
+
+Three-part control:
+1. **Minus button** (-): Decreases bid by ₹5,00,000
+2. **Amount display**: Shows formatted bid with Indian number format
+3. **Plus button** (+): Increases bid by ₹5,00,000
+
+The display remains at minimum bid value until user activates it by clicking + or -.
+
+### Price in words
+
+Below the bid input, the amount is shown in Indian notation:
+```
+₹ 5 Crore 25 Lakh
+```
+
+Conversion function at `BidCard.tsx:280-293`.
+
+### Error and success messages
+
+Animated alerts appear for:
+- **Errors**: Red border, alert icon, error message
+  - "You already hold the highest bid!"
+  - "Press + to place a bid"
+  - "Minimum bid amount is ₹..."
+  - "Bid exceeds remaining budget!"
+  - "Bidding not allowed during adjustment rounds"
+
+- **Success**: Green background, checkmark icon
+  - "Bid Placed!" (auto-dismisses after 2 seconds)
+
+### Submit button
+
+Large primary button with states:
+- **Active**: "PLACE BID" in uppercase
+- **Loading**: Spinner animation
+- **Disabled**: When user is highest bidder or hasn't activated bid
+
+## Socket events
+
+### Emitted
+
+```typescript
+socket.emit('place_bid', {
+  team_id: string,
+  amount: number,
+  plot_number: number
+});
+```
+
+### Listened
+
+```typescript
+socket.on('exception', (data) => {
+  // Error from server
+  setError(data.message);
+});
+
+socket.on('bid_error', (data) => {
+  // Bid-specific error
+  setError(data.message);
+});
+
+socket.on('new_bid', (data) => {
+  // Successful bid placement
+  if (data.team_name === userTeam.name) {
+    setSuccessMsg('Bid Placed!');
+  }
+});
+
+socket.on('plot_sold_summary', (data) => {
+  // Plot sold notification
+  setSoldInfo({
+    plotNumber: data.plotNumber,
+    teamName: data.teamName,
+    price: data.price
+  });
+});
+```
+
+## Number formatting
+
+### Indian comma format
+
+All amounts use Indian numbering:
+```
+₹ 1,25,00,000  // 1 crore 25 lakhs
+```
+
+Implemented with `toLocaleString('en-IN')`.
+
+### Input sanitization
+
+Bid input:
+- Strips non-numeric characters
+- Removes commas before parsing
+- Displays with commas for readability
+
+## Seller restrictions in Round 4
+
+When a team owns a plot and lists it for rebidding:
+```typescript
+const isSellerDisabled =
+  serverSellerDisabled ||
+  (currentRound === 4 &&
+   Number(currentPlot?.current_bid || 0) === 0 &&
+   currentPlot?.winner_team_id === userTeam?.id);
+```
+
+Shows message:
+```
+You are selling this plot. Bidding disabled.
+```
+
+## Animations
+
+All state transitions use Framer Motion:
+- **Error/success messages**: Height animation with fade
+- **Sold overlay**: Scale and bounce effects
+- **Button states**: Smooth opacity transitions
+
+## See also
+
+- [CityMap](/components/city-map) - Interactive plot map
+- [Team Dashboard](/features/team-dashboard) - Complete dashboard with bid feed

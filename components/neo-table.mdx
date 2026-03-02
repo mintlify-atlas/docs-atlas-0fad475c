@@ -1,0 +1,297 @@
+---
+title: NeoTable
+description: A neo-brutalist styled table component built on TanStack Table with sorting and row highlighting
+---
+
+The `NeoTable` component is a powerful data table built on TanStack Table (React Table v8) with neo-brutalist styling. It supports sorting, row clicks, and conditional row highlighting.
+
+## Props
+
+<ParamField path="columns" type="ColumnDef<TData, TValue>[]" required>
+  Array of column definitions following the TanStack Table API. Each column can define header, cell renderers, and sorting behavior.
+</ParamField>
+
+<ParamField path="data" type="TData[]" required>
+  Array of data objects to display in the table. Type is generic and inferred from column definitions.
+</ParamField>
+
+<ParamField path="onRowClick" type="(row: TData) => void">
+  Optional callback fired when a row is clicked. Receives the full row data object. When provided, rows become clickable with cursor pointer.
+</ParamField>
+
+<ParamField path="highlightKey" type="keyof TData">
+  The property name to compare for row highlighting (e.g., `"id"` or `"number"`).
+</ParamField>
+
+<ParamField path="highlightValue" type="any">
+  The value to match against `highlightKey`. Rows where `row[highlightKey] === highlightValue` receive highlight styling.
+</ParamField>
+
+## Basic usage
+
+```tsx
+import NeoTable from "@/components/neo/NeoTable";
+import { ColumnDef } from "@tanstack/react-table";
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+const columns: ColumnDef<User>[] = [
+  {
+    accessorKey: "id",
+    header: "ID",
+  },
+  {
+    accessorKey: "name",
+    header: "Name",
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+  },
+];
+
+const data: User[] = [
+  { id: 1, name: "John Doe", email: "john@example.com" },
+  { id: 2, name: "Jane Smith", email: "jane@example.com" },
+];
+
+function UsersTable() {
+  return <NeoTable columns={columns} data={data} />;
+}
+```
+
+## With sorting
+
+Columns are automatically sortable unless explicitly disabled:
+
+```tsx
+const columns: ColumnDef<User>[] = [
+  {
+    accessorKey: "name",
+    header: "Name",
+    enableSorting: true, // Default behavior
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    enableSorting: false, // Disable sorting for this column
+  },
+];
+```
+
+Sortable headers show:
+- `↕` when not sorted
+- `▲` when sorted ascending
+- `▼` when sorted descending
+
+## With row highlighting
+
+Highlight specific rows based on a condition:
+
+```tsx
+<NeoTable
+  columns={columns}
+  data={plots}
+  highlightKey="number"
+  highlightValue={currentPlotNumber}
+/>
+```
+
+Highlighted rows receive:
+- Semi-transparent primary color background: `bg-[var(--color-primary)]/10`
+- 2px primary color ring: `ring-2 ring-[var(--color-primary)]`
+
+## With row clicks
+
+```tsx
+<NeoTable
+  columns={columns}
+  data={users}
+  onRowClick={(user) => {
+    console.log("Clicked user:", user);
+    navigate(`/users/${user.id}`);
+  }}
+/>
+```
+
+## Custom cell rendering
+
+```tsx
+const columns: ColumnDef<Plot>[] = [
+  {
+    accessorKey: "number",
+    header: "Plot #",
+    cell: ({ row }) => (
+      <span className="font-black text-lg">
+        #{row.original.number}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <span className={`px-2 py-1 rounded ${row.original.status === "sold" ? "bg-green-500" : "bg-gray-500"}`}>
+        {row.original.status}
+      </span>
+    ),
+  },
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => (
+      <button onClick={() => handleEdit(row.original)}>
+        Edit
+      </button>
+    ),
+  },
+];
+```
+
+## Usage examples
+
+### Admin panel plot table
+
+From the admin panel (admin/page.tsx:1195):
+
+```tsx
+<NeoTable
+  columns={tableColumns}
+  data={plots}
+  highlightKey="number"
+  highlightValue={auctionState?.current_plot_number}
+/>
+```
+
+### Plot tracking table
+
+From the tracking window (TrackingWindow.tsx:361):
+
+```tsx
+const myPlotsColumns: ColumnDef<Plot>[] = [
+  { accessorKey: "number", header: "Plot #" },
+  { accessorKey: "type", header: "Type" },
+  { accessorKey: "price", header: "Price" },
+];
+
+<NeoTable columns={myPlotsColumns} data={myPlots} />
+```
+
+### Sold plots with filtering
+
+```tsx
+const soldRebidColumns: ColumnDef<Plot>[] = [
+  { accessorKey: "number", header: "#" },
+  { accessorKey: "buyer", header: "Buyer" },
+  { accessorKey: "price", header: "Price" },
+];
+
+<NeoTable columns={soldRebidColumns} data={mySoldPlots} />
+```
+
+## Empty state
+
+When no data is provided, the table shows:
+
+```
+┌───────────────────────────────┐
+│                               │
+│        No results.            │
+│                               │
+└───────────────────────────────┘
+```
+
+The empty message is:
+- Centered
+- Bold uppercase font
+- 50% opacity
+- Spans all columns
+
+## Styling features
+
+### Table structure
+
+- 4px borders throughout using `var(--color-border)`
+- Background color: `var(--color-bg)`
+- Text color: `var(--color-text)`
+- Minimum width: 600px (scrollable on smaller screens)
+- Border collapse: separate with 0 spacing
+
+### Header styling
+
+- Background: `var(--color-surface)`
+- Font: Black weight, uppercase, wide tracking
+- Padding: 12px vertical, 12px horizontal
+- Sticky positioning (stays at top during scroll)
+- Sortable headers have hover/active states
+- Right and bottom borders on all cells except last column
+
+### Body styling
+
+- Bold font, small text (text-sm)
+- 4px borders on bottom and right of each cell
+- Hover effect: Brightness reduced by 5%
+- Clickable rows have cursor pointer
+- Highlighted rows have primary color ring and background
+
+### Responsive behavior
+
+- Horizontal scroll on smaller screens
+- Full height and width container
+- Minimum width of 600px ensures readability
+
+## Advanced: Column configuration
+
+```tsx
+import { ColumnDef } from "@tanstack/react-table";
+
+const columns: ColumnDef<Plot>[] = [
+  {
+    accessorKey: "number",
+    header: "Plot #",
+    enableSorting: true,
+    sortingFn: "alphanumeric",
+  },
+  {
+    accessorFn: (row) => row.price,
+    id: "price",
+    header: "Price",
+    cell: ({ row }) => `$${row.original.price.toLocaleString()}`,
+  },
+  {
+    accessorKey: "buyer",
+    header: "Buyer",
+    cell: ({ getValue }) => getValue() ?? "—",
+  },
+];
+```
+
+## TypeScript generics
+
+The component is fully typed with TypeScript generics:
+
+```tsx
+interface NeoTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  onRowClick?: (row: TData) => void;
+  highlightKey?: keyof TData;
+  highlightValue?: any;
+}
+```
+
+This provides full type safety for your data structures.
+
+## Dependencies
+
+Requires `@tanstack/react-table` for table functionality:
+
+```bash
+npm install @tanstack/react-table
+```
+
+See [TanStack Table documentation](https://tanstack.com/table/v8) for advanced column definitions and features.

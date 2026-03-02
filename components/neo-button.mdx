@@ -1,0 +1,178 @@
+---
+title: NeoButton
+description: A neo-brutalist styled button component with variants, sizes, and smooth animations
+---
+
+The `NeoButton` component is a core UI element featuring the neo-brutalist design aesthetic with bold borders, drop shadows, and interactive animations powered by Framer Motion.
+
+## Props
+
+<ParamField path="variant" type="'primary' | 'secondary' | 'danger' | 'success' | 'base'" default="'primary'">
+  The visual style variant of the button.
+  - `primary`: Uses primary color background
+  - `secondary`: Uses secondary color background
+  - `danger`: Uses danger color background (red)
+  - `success`: Uses success color background (green)
+  - `base`: Uses base background color
+</ParamField>
+
+<ParamField path="size" type="'sm' | 'md' | 'lg'" default="'md'">
+  The size of the button.
+  - `sm`: Small (height: 32px, padding: 12px horizontal)
+  - `md`: Medium (height: 48px, padding: 24px horizontal)
+  - `lg`: Large (height: 56px, padding: 32px horizontal)
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  The content to display inside the button.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the button.
+</ParamField>
+
+<ParamField path="...props" type="React.ButtonHTMLAttributes<HTMLButtonElement>">
+  All standard HTML button attributes are supported (onClick, disabled, type, etc.).
+</ParamField>
+
+## Variants
+
+The button comes with five color variants:
+
+```tsx
+// Primary variant - uses --color-primary
+<NeoButton variant="primary">Primary Action</NeoButton>
+
+// Secondary variant - uses --color-secondary
+<NeoButton variant="secondary">Secondary Action</NeoButton>
+
+// Danger variant - uses --color-danger
+<NeoButton variant="danger">Delete</NeoButton>
+
+// Success variant - uses --color-success
+<NeoButton variant="success">Confirm</NeoButton>
+
+// Base variant - uses --color-bg
+<NeoButton variant="base">Cancel</NeoButton>
+```
+
+## Sizes
+
+Three size options are available:
+
+```tsx
+<NeoButton size="sm">Small Button</NeoButton>
+<NeoButton size="md">Medium Button</NeoButton>
+<NeoButton size="lg">Large Button</NeoButton>
+```
+
+## Usage examples
+
+### Basic usage
+
+```tsx
+import NeoButton from "@/components/neo/NeoButton";
+
+function MyComponent() {
+  return (
+    <NeoButton variant="primary" onClick={() => console.log("Clicked")}>
+      Click Me
+    </NeoButton>
+  );
+}
+```
+
+### With icons
+
+```tsx
+import { Play, Pause } from "lucide-react";
+
+<NeoButton variant="success" size="sm">
+  <Play size={14} className="mr-1" />
+  START
+</NeoButton>
+
+<NeoButton variant="base" size="sm">
+  <Pause size={14} className="mr-1" />
+  PAUSE
+</NeoButton>
+```
+
+### Disabled state
+
+```tsx
+<NeoButton 
+  variant="primary" 
+  disabled={isLoading}
+  className={isLoading ? "opacity-50" : ""}
+>
+  {isLoading ? "Loading..." : "Submit"}
+</NeoButton>
+```
+
+### Admin panel controls
+
+From the admin panel (admin/page.tsx:729):
+
+```tsx
+<NeoButton
+  variant="success"
+  onClick={() => sendAction("start")}
+  disabled={isRunning}
+  className={`text-xs py-2 ${isRunning ? "opacity-50" : ""}`}
+>
+  <Play size={14} className="mr-1" />
+  {isNotStarted ? "START" : isCompleted ? "RESTART" : "RESUME"}
+</NeoButton>
+
+<NeoButton
+  variant="base"
+  onClick={() => sendAction("pause")}
+  disabled={!isRunning}
+  className={`text-xs py-2 ${!isRunning ? "opacity-50 bg-[var(--color-surface)]" : "bg-[var(--color-surface)]"}`}
+>
+  <Pause size={14} className="mr-1" /> PAUSE
+</NeoButton>
+```
+
+### Confirmation dialog
+
+From the admin panel (admin/page.tsx:1732):
+
+```tsx
+<NeoButton 
+  variant="secondary" 
+  className="flex-1" 
+  onClick={() => setConfirmReq(null)}
+>
+  Cancel
+</NeoButton>
+<NeoButton 
+  variant="danger" 
+  className="flex-1" 
+  onClick={confirmReq.action}
+>
+  Confirm
+</NeoButton>
+```
+
+## Animations
+
+The button features smooth Framer Motion animations:
+
+- **Hover**: Shifts 2px right and down, shadow adjusts to maintain depth
+- **Tap**: Shifts 4px right and down, shadow disappears for pressed effect
+- **Initial**: Default neo-brutalist shadow using CSS variables
+
+Animation uses these CSS variables:
+- `--neo-shadow-offset-x`: Horizontal shadow offset (default: 6px)
+- `--neo-shadow-offset-y`: Vertical shadow offset (default: 6px)
+- `--neo-shadow-color`: Shadow color (default: #000000)
+
+## Styling notes
+
+- Uses the `neo-border` class for consistent 4px borders
+- Border radius controlled by `--neo-radius` CSS variable
+- Text is bold, uppercase with wide tracking for neo-brutalist aesthetic
+- All variants use CSS custom properties for theming
+- Flexbox centering for content alignment

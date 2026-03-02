@@ -1,0 +1,253 @@
+---
+title: CityMap
+description: Interactive SVG map component for visualizing plots with color-coded status indicators
+---
+
+The `CityMap` component renders an interactive SVG-based city map that displays all plots with dynamic color-coding based on plot status, ownership, and policy adjustments.
+
+## Features
+
+- **Interactive plot visualization** with hover tooltips
+- **Dynamic color-coding** based on plot status and adjustments
+- **Toggle between views**: Policy changes vs. plot types
+- **Round-specific styling** for different auction phases
+- **Responsive legend** with scrollable type indicators
+
+## Props
+
+<ParamField path="currentPlotNumber" type="string | number | null">
+  The currently active plot number to highlight on the map.
+</ParamField>
+
+<ParamField path="plots" type="any[]">
+  Array of all plot data for the map. Each plot should include:
+  - `number`: Plot identifier
+  - `status`: Plot status (sold, unsold, active, pending)
+  - `winner_team_id`: ID of the team that owns the plot
+  - `current_bid`: Current bid amount
+  - `total_plot_price`: Base plot price
+  - `round_adjustment`: Value adjustment from policies
+  - `plot_type`: Type classification (e.g., RESIDENTIAL, COMMERCIAL)
+</ParamField>
+
+<ParamField path="allTeams" type="any[]">
+  Array of all teams for name lookup in tooltips.
+</ParamField>
+
+<ParamField path="recentAdjustments" type="Record<number, number>">
+  Adjustments from the current policy only, mapping plot numbers to delta amounts.
+</ParamField>
+
+<ParamField path="currentRound" type="number">
+  The current auction round (1-6). Affects map styling and behavior.
+</ParamField>
+
+<ParamField path="onPlotClick" type="(plotNumber: string) => void">
+  Callback function invoked when a plot is clicked.
+</ParamField>
+
+<ParamField path="rebidOffers" type="any[]">
+  Rebid offers to identify plots listed for sale in round 4.
+</ParamField>
+
+## Plot color system
+
+### Round 1: Initial bidding
+- **Green** (`#4ade80`): Sold plots
+- **Primary color**: Active plot being auctioned
+- **Default**: Unsold plots
+
+### Rounds 2, 3, 5, 6: Policy adjustments
+- **Orange** (`#fb923c`): Plots with positive adjustments (pulsing)
+- **Red** (`#f87171`): Plots with negative adjustments (pulsing)
+- **Primary color**: Currently selected plot
+
+In these rounds, users can toggle between viewing recent policy changes and viewing plots by type.
+
+### Round 4: Final bidding
+- **Yellow** (`#facc15`): Plots for sale (rebid offers, pulsing)
+- **Green** (`#4ade80`): Sold plots not for resale
+- **Gray** (`#94a3b8`): Unsold plots
+- **Primary color**: Current plot being auctioned
+
+### Plot type colors
+
+Over 25 plot types are color-coded by category:
+
+**Residential & Housing**
+- RESIDENTIAL: Blue (`#60a5fa`)
+- AFFORDABLE HOUSE SCHEME: Light Blue (`#93c5fd`)
+- SLUM AREA: Slate (`#cbd5e1`)
+
+**Commercial & Business**
+- COMMERCIAL: Pink (`#f472b6`)
+- HOTEL: Purple (`#c084fc`)
+- THEATRE: Fuchsia (`#e879f9`)
+
+**Industrial & Utility**
+- INDUSTRIAL: Violet (`#a78bfa`)
+- ELECTRIC SUB STATION: Amber (`#fbbf24`)
+- WATER TREATMENT: Cyan (`#22d3ee`)
+
+**Green / Nature**
+- AGRICULTURE: Green (`#4ade80`)
+- GARDEN: Light Green (`#86efac`)
+- FOREST: Teal (`#14b8a6`)
+
+**Government & Public**
+- GOVERNMENT: Yellow (`#fcd34d`)
+- POLICE STATION: Orange (`#fdba74`)
+- AIRPORT: Sky (`#7dd3fc`)
+
+**Education & Health**
+- SCHOOL: Light Rose (`#fda4af`)
+- HOSPITAL: Red (`#f87171`)
+
+See `CityMap.tsx:225-284` for the complete type color mapping.
+
+## Usage examples
+
+### Basic usage in dashboard
+
+```tsx
+import CityMap from '@/components/map/CityMap';
+
+export default function Dashboard() {
+  const [currentPlot, setCurrentPlot] = useState(null);
+  const [plots, setPlots] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [currentRound, setCurrentRound] = useState(1);
+  const [recentAdjustments, setRecentAdjustments] = useState({});
+
+  return (
+    <div className="w-full h-full">
+      <CityMap
+        currentPlotNumber={currentPlot?.number}
+        plots={plots}
+        allTeams={teams}
+        recentAdjustments={recentAdjustments}
+        currentRound={currentRound}
+        onPlotClick={(plotNumber) => {
+          console.log('Plot clicked:', plotNumber);
+        }}
+      />
+    </div>
+  );
+}
+```
+
+### Read-only view for live page
+
+```tsx
+import CityMap from '@/components/map/CityMap';
+
+export default function LivePage() {
+  return (
+    <div className="h-full p-2">
+      <CityMap
+        currentPlotNumber={currentPlot?.number}
+        plots={plots}
+        allTeams={teams}
+        currentRound={currentRound}
+        rebidOffers={rebidOffers}
+      />
+    </div>
+  );
+}
+```
+
+### With policy adjustments tracking
+
+```tsx
+const [recentAdjustments, setRecentAdjustments] = useState<Record<number, number>>({});
+
+// Update adjustments when policy is applied
+socket.on('plot_adjustment', (data) => {
+  const oldPlot = plots.find(p => p.number === data.plot_number);
+  const oldAdj = Number(oldPlot?.round_adjustment || 0);
+  const newAdj = Number(data.plot.round_adjustment || 0);
+  const delta = newAdj - oldAdj;
+
+  if (delta !== 0) {
+    setRecentAdjustments(ra => ({
+      ...ra,
+      [data.plot_number]: (ra[data.plot_number] || 0) + delta
+    }));
+  }
+});
+
+<CityMap
+  currentPlotNumber={undefined}
+  plots={plots}
+  allTeams={teams}
+  recentAdjustments={recentAdjustments}
+  currentRound={currentRound}
+/>
+```
+
+## Interactive features
+
+### Hover tooltips
+
+When hovering over a plot, a tooltip displays:
+- Plot number
+- Owner team name
+- Plot type (Round 2+)
+- Total area and actual area
+- Current price
+- Round adjustment (if any)
+- Current policy delta (if applicable)
+
+Tooltips are positioned at the mouse cursor and update in real-time.
+
+### View mode toggle
+
+During policy rounds (2, 3, 5, 6), a toggle appears in the top-right corner allowing users to switch between:
+- **Changes mode**: Shows orange/red highlights for plots affected by current policy
+- **Types mode**: Shows all plots color-coded by their type classification
+
+### Legend strip
+
+A compact legend appears at the bottom of the map:
+- **Policy rounds**: Shows what orange and red colors represent
+- **Type view**: Scrollable list of all plot types with their colors
+- **Round 4**: Shows Current, For Sale, Sold, and Unsold indicators
+
+## SVG maps
+
+The component switches between two SVG maps:
+- **City1SVG**: Used in Round 1
+- **City2SVG**: Used in Rounds 2-6
+
+Each SVG contains `<g>` elements with `id` attributes matching plot numbers. The component calculates bounding box centers for plot number labels.
+
+## Styling and animations
+
+All plot styling is applied via dynamic `<style>` tags that inject CSS based on:
+- Plot status
+- Round number
+- Recent adjustments
+- User interactions
+
+**Pulse animation** is applied to:
+- Plots with recent policy adjustments
+- Plots for sale in Round 4
+- The currently active plot
+
+```css
+@keyframes plotPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+```
+
+## Performance considerations
+
+- **Throttled hover detection**: Mouse move events are throttled to 50ms to prevent lag on large SVGs
+- **Efficient re-renders**: Plot centers are memoized and only recalculated when `currentRound` changes
+- **Dynamic styles**: CSS is generated once per render and injected as a single `<style>` block
+
+## See also
+
+- [BidCard](/components/bid-card) - Bidding interface
+- [Team Dashboard](/features/team-dashboard) - Full dashboard with map integration

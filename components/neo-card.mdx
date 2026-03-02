@@ -1,0 +1,171 @@
+---
+title: NeoCard
+description: A neo-brutalist styled card container with optional hover effects
+---
+
+The `NeoCard` component provides a container with neo-brutalist styling, featuring bold borders and drop shadows. It supports optional hover animations for interactive elements.
+
+## Props
+
+<ParamField path="children" type="React.ReactNode" required>
+  The content to display inside the card.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the card. Default padding is `p-6` but can be overridden.
+</ParamField>
+
+<ParamField path="hoverEffect" type="boolean" default="false">
+  When `true`, the card shifts up and left on hover with an exaggerated shadow effect.
+</ParamField>
+
+<ParamField path="onClick" type="() => void">
+  Optional click handler. When provided, makes the card interactive.
+</ParamField>
+
+## Basic usage
+
+```tsx
+import NeoCard from "@/components/neo/NeoCard";
+
+function MyComponent() {
+  return (
+    <NeoCard>
+      <h2>Card Title</h2>
+      <p>Card content goes here</p>
+    </NeoCard>
+  );
+}
+```
+
+## With hover effect
+
+```tsx
+<NeoCard hoverEffect onClick={() => console.log("Card clicked")}>
+  <h3>Interactive Card</h3>
+  <p>This card lifts on hover</p>
+</NeoCard>
+```
+
+## Custom styling
+
+```tsx
+// Override default padding for full-bleed content
+<NeoCard className="p-0 overflow-hidden">
+  <div className="h-48 bg-gradient-to-r from-primary to-secondary" />
+  <div className="p-4">
+    <h3>Full-width header</h3>
+  </div>
+</NeoCard>
+
+// Custom background and border
+<NeoCard className="bg-[var(--color-primary)] text-[var(--color-bg)] border-8">
+  <h2>Highlighted Card</h2>
+</NeoCard>
+```
+
+## Usage examples
+
+### Dashboard stat card
+
+From the dashboard (dashboard/page.tsx:805):
+
+```tsx
+<NeoCard className="flex flex-col shrink-0 lg:flex-none border-4 border-[var(--color-border)] bg-[var(--color-primary)] text-[var(--color-bg)] shadow-[8px_8px_0_var(--neo-shadow-color)]">
+  <h2 className="text-sm font-black uppercase mb-2 opacity-80 flex items-center gap-2">
+    <AlertTriangle size={16} /> Active Policy (Round {currentRound})
+  </h2>
+  <p className="font-extrabold text-lg sm:text-2xl leading-snug">
+    {activeQuestion}
+  </p>
+</NeoCard>
+```
+
+### Map container
+
+From the dashboard (dashboard/page.tsx:815):
+
+```tsx
+<NeoCard className="flex-1 min-h-[300px] lg:min-h-0 p-0 overflow-hidden relative bg-[var(--color-bg)]">
+  <div className="absolute inset-0 p-2 sm:p-4">
+    <CityMap currentPlotNumber={undefined} />
+  </div>
+</NeoCard>
+```
+
+### Empty state
+
+From the dashboard (dashboard/page.tsx:1244):
+
+```tsx
+<NeoCard className="flex flex-col items-center justify-center min-h-[200px] text-center bg-[var(--color-bg)] border-dashed">
+  <Package className="w-12 h-12 opacity-30 mb-2" />
+  <p className="font-bold uppercase text-sm opacity-50">No plots owned</p>
+</NeoCard>
+```
+
+### Admin panel container
+
+From the admin panel (admin/page.tsx:678):
+
+```tsx
+<NeoCard className="shrink-0 bg-[var(--color-bg)] mb-3">
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="text-xl font-black uppercase">
+      Auction Controls
+    </h2>
+  </div>
+  {/* Control buttons */}
+</NeoCard>
+```
+
+### Full-screen modal
+
+From the dashboard (dashboard/page.tsx:678):
+
+```tsx
+<NeoCard className="w-full max-w-4xl bg-[var(--color-bg)] border-8 border-[var(--color-border)] shadow-[12px_12px_0_var(--color-primary)] p-6 lg:p-10 flex flex-col max-h-full">
+  <h1 className="text-3xl font-black uppercase mb-4">Welcome</h1>
+  {/* Modal content */}
+</NeoCard>
+```
+
+## Hover animation
+
+When `hoverEffect={true}`, the card animates on hover:
+
+- Shifts -2px left and -2px up
+- Shadow expands to 10px in both directions
+- Creates a "lifting off the page" effect
+
+When `hoverEffect={false}` (default), no hover animation occurs.
+
+## Styling notes
+
+- Uses the `neo-border` class for 4px borders with `var(--color-border)`
+- Border radius controlled by `--neo-radius` CSS variable
+- Default padding is `p-6` (24px)
+- Default background is `var(--color-bg)`
+- Initial shadow uses CSS variables:
+  - `--neo-shadow-offset-x` (default: 6px)
+  - `--neo-shadow-offset-y` (default: 6px)
+  - `--neo-shadow-color` (default: #000000)
+- Overflow is hidden by default for clean border radius
+
+## Layout patterns
+
+Common className patterns used in the app:
+
+```tsx
+// Zero padding for images/maps
+className="p-0 overflow-hidden"
+
+// Flexible height container
+className="flex-1 min-h-0 overflow-hidden flex flex-col"
+
+// Fixed aspect ratio
+className="w-full max-w-3xl aspect-square"
+
+// Shrink-to-fit
+className="shrink-0 bg-[var(--color-bg)]"
+```

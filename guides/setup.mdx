@@ -1,0 +1,196 @@
+---
+title: Installation and setup
+description: Get AuctionFest running locally with Next.js 16 and Socket.IO
+---
+
+## Prerequisites
+
+Before setting up AuctionFest, ensure you have the following installed:
+
+- Node.js 20 or higher
+- npm, yarn, pnpm, or bun package manager
+- A backend server running on port 8000 (or custom port)
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the AuctionFest frontend repository to your local machine:
+
+    <CodeGroup>
+      ```bash npm
+      git clone <repository-url>
+      cd frontend
+      ```
+
+      ```bash yarn
+      git clone <repository-url>
+      cd frontend
+      ```
+
+      ```bash bun
+      git clone <repository-url>
+      cd frontend
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Install dependencies">
+    Install the required packages for the project:
+
+    <CodeGroup>
+      ```bash npm
+      npm install
+      ```
+
+      ```bash yarn
+      yarn install
+      ```
+
+      ```bash bun
+      bun install
+      ```
+    </CodeGroup>
+
+    <Note>
+      The project uses Next.js 16.1.6, React 19, Socket.IO Client 4.8.3, and Tailwind CSS 4 for styling.
+    </Note>
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env.local` file in the root directory and configure your backend URL:
+
+    ```bash
+    NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+    ```
+
+    <Warning>
+      If you don't set `NEXT_PUBLIC_BACKEND_URL`, the application will default to `http://localhost:8000`. Ensure your backend server is accessible at this URL.
+    </Warning>
+
+    The frontend uses this environment variable in two places:
+    - **next.config.ts**: API route rewrites to proxy `/api/*` requests to the backend
+    - **socket-context.tsx**: WebSocket connection to the backend server
+  </Step>
+
+  <Step title="Start the development server">
+    Run the development server:
+
+    <CodeGroup>
+      ```bash npm
+      npm run dev
+      ```
+
+      ```bash yarn
+      yarn dev
+      ```
+
+      ```bash bun
+      bun dev
+      ```
+    </CodeGroup>
+
+    The application will start on `http://localhost:3000` and bind to all network interfaces (`0.0.0.0`), making it accessible from other devices on your network.
+
+    <Tip>
+      The dev server uses the `-H 0.0.0.0` flag to allow connections from any IP address. This is useful for testing on multiple devices during the auction event.
+    </Tip>
+  </Step>
+
+  <Step title="Verify the connection">
+    Open your browser and navigate to `http://localhost:3000`. You should see:
+
+    - The team login page
+    - A connection indicator (green "Live" badge when connected)
+    - No console errors related to Socket.IO
+
+    <Note>
+      The Socket.IO client automatically attempts to connect to the backend server using polling and WebSocket transports with automatic upgrades.
+    </Note>
+  </Step>
+</Steps>
+
+## Socket.IO configuration
+
+The application uses a singleton Socket.IO instance that persists across React component remounts. Key configuration options:
+
+```typescript
+{
+  transports: ["polling", "websocket"],
+  upgrade: true,
+  rememberUpgrade: true,
+  autoConnect: true,
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 30000
+}
+```
+
+This configuration ensures:
+- Automatic reconnection on network failures
+- Graceful fallback from WebSocket to polling
+- Persistent connection across page refreshes
+
+## Production build
+
+To create an optimized production build:
+
+<CodeGroup>
+  ```bash npm
+  npm run build
+  npm start
+  ```
+
+  ```bash yarn
+  yarn build
+  yarn start
+  ```
+
+  ```bash bun
+  bun run build
+  bun start
+  ```
+</CodeGroup>
+
+The production server also binds to `0.0.0.0` for network accessibility.
+
+## Troubleshooting
+
+### Socket connection fails
+
+If the Socket.IO connection fails:
+
+1. Verify the backend server is running on port 8000
+2. Check `NEXT_PUBLIC_BACKEND_URL` is correctly set
+3. Ensure no firewall is blocking the connection
+4. Check browser console for connection errors
+
+### API routes return 502/504
+
+If API routes fail:
+
+1. Verify the backend server is responding at the configured URL
+2. Check the Next.js rewrites in `next.config.ts`
+3. Test the backend API endpoints directly
+
+### Port already in use
+
+If port 3000 is already in use, specify a different port:
+
+```bash
+PORT=3001 npm run dev
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Running an auction" icon="gavel" href="/guides/running-auction">
+    Learn how to use the admin controls to run a complete auction event
+  </Card>
+  
+  <Card title="Policy rounds" icon="file-text" href="/guides/policy-rounds">
+    Understand how to manage policy adjustment rounds 2, 3, 5, and 6
+  </Card>
+</CardGroup>

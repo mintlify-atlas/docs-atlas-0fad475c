@@ -1,0 +1,310 @@
+---
+title: Running an auction event
+description: Step-by-step guide for admins to manage an AuctionFest auction from start to finish
+---
+
+## Admin authentication
+
+Before you can control the auction, you need to authenticate as an admin.
+
+<Steps>
+  <Step title="Navigate to admin page">
+    Open your browser and go to `/admin` on your frontend URL (e.g., `http://localhost:3000/admin`).
+  </Step>
+
+  <Step title="Enter admin password">
+    You'll see a password prompt. Enter the admin password configured on your backend server.
+
+    <Note>
+      The password is verified via `POST /api/admin/verify`. Your session is stored in localStorage as `admin_auth`.
+    </Note>
+  </Step>
+
+  <Step title="Access the control panel">
+    Once authenticated, you'll see the full admin dashboard with:
+    - Auction control buttons
+    - Connected teams display
+    - Plot status table
+    - Round selector
+    - Policy adjustment panel (for rounds 2, 3, 5, 6)
+  </Step>
+</Steps>
+
+## Understanding the admin interface
+
+The admin dashboard is organized into several key sections:
+
+### Header information
+
+- **Online count**: Number of connected clients (teams + admin + leaderboard)
+- **Status badge**: Current auction status (not started, running, selling, paused, completed)
+- **Current plot**: The plot number currently up for auction
+- **Current round**: The active round (1-6)
+
+### Control buttons
+
+The main control panel provides the following actions:
+
+- **START/RESUME**: Begin the auction or resume from paused state
+- **PAUSE**: Temporarily stop the auction
+- **PREV**: Go back to the previous plot
+- **NEXT**: Move to the next plot
+- **START COUNTDOWN (SELL)**: Begin the 3-second countdown to finalize the current plot sale
+- **RESET**: Reset the entire auction (requires confirmation)
+
+<Warning>
+  The RESET button will clear all bids and restart the auction. This action cannot be undone. A confirmation step is required.
+</Warning>
+
+## Running a complete auction
+
+<Steps>
+  <Step title="Verify team connections">
+    Before starting, check the "Online" section in the sidebar to ensure all teams are connected.
+
+    <Tip>
+      Teams appear in the online list when they successfully log in from the dashboard. The list excludes "Admin" and "Leaderboard" connections.
+    </Tip>
+  </Step>
+
+  <Step title="Start the auction">
+    Click the **START** button. The auction status will change to "running" and the first plot will become active.
+
+    The system will:
+    - Set the auction status to "running"
+    - Activate plot #1
+    - Broadcast the state change to all connected clients
+    - Enable the bid interface for teams
+  </Step>
+
+  <Step title="Monitor live bidding">
+    During bidding, you'll see real-time updates in the "Live Plot" widget:
+
+    - Current highest bid amount
+    - Team name with the highest bid
+    - Bid history in the plot status table
+
+    <Note>
+      Bids are received via Socket.IO `new_bid` events and automatically update the UI for all connected clients.
+    </Note>
+  </Step>
+
+  <Step title="Finalize the plot sale">
+    When bidding stabilizes, click **START COUNTDOWN (SELL)** to begin the 3-second countdown.
+
+    During the countdown:
+    - A red overlay appears with the countdown timer
+    - Teams can still place last-second bids
+    - The countdown resets if a new bid is placed
+
+    After 3 seconds:
+    - The plot is marked as "sold"
+    - The winning team is assigned ownership
+    - Their budget is updated
+    - The system automatically advances to the next plot
+  </Step>
+
+  <Step title="Navigate between plots">
+    Use the **NEXT** and **PREV** buttons to manually navigate plots if needed:
+
+    - **NEXT**: Moves to the next pending plot
+    - **PREV**: Returns to the previous plot (only available if current plot number > 1)
+
+    <Warning>
+      Using PREV will revert the last plot to "pending" status. Use with caution.
+    </Warning>
+  </Step>
+
+  <Step title="Pause and resume">
+    If you need to temporarily stop the auction:
+
+    1. Click **PAUSE** - The auction status changes to "paused"
+    2. Teams will see a "Waiting for Auction" screen
+    3. Click **RESUME** to continue
+
+    <Tip>
+      Pausing is useful for addressing technical issues, taking breaks, or making announcements.
+    </Tip>
+  </Step>
+</Steps>
+
+## Round progression
+
+AuctionFest has 6 rounds with different mechanics:
+
+### Round structure
+
+- **Round 1**: Initial bidding on all plots
+- **Round 2**: Policy adjustment (see [Policy rounds guide](/guides/policy-rounds))
+- **Round 3**: Policy adjustment
+- **Round 4**: Two-phase round with selling and rebidding
+- **Round 5**: Policy adjustment
+- **Round 6**: Final policy adjustment
+
+### Changing rounds
+
+Use the round selector buttons (R1-R6) to manually change rounds:
+
+```typescript
+// Sends POST /api/admin/set-round
+{ "round": 2 }
+```
+
+<Note>
+  Changing rounds will update the UI for all connected teams and switch between bidding and adjustment interfaces.
+</Note>
+
+## Round 4: Sell and rebid phase
+
+Round 4 has special two-phase mechanics:
+
+<Steps>
+  <Step title="Start sell phase">
+    Click **START SELL PHASE** to allow teams to list their plots for sale.
+
+    During this phase:
+    - Teams can list any sold plot they own
+    - They set an asking price (100%-110% of current value)
+    - Listed plots appear in the "Listed for Sale" panel
+  </Step>
+
+  <Step title="Monitor sell offers">
+    The admin panel shows all listed plots with:
+    - Plot number
+    - Team name
+    - Asking price
+
+    Teams can also cancel ("unsell") their listings during this phase.
+  </Step>
+
+  <Step title="Close sell and start bidding">
+    When ready, click **END SELL → START BIDDING**.
+
+    The system will:
+    - Close the sell phase
+    - Collect all unsold listed plots
+    - Start bidding on these plots one by one
+
+    <Warning>
+      Confirm the action carefully - once bidding starts, teams cannot list more plots.
+    </Warning>
+  </Step>
+
+  <Step title="Conduct rebid auction">
+    Use the standard **NEXT** and **SELL** buttons to auction the listed plots.
+
+    The bid queue shows how many plots remain in the rebid phase.
+  </Step>
+</Steps>
+
+## Ending the game
+
+After round 6, you can finalize the auction:
+
+<Steps>
+  <Step title="Click End Game">
+    On round 6 or later, click **🏁 END GAME — SHOW FINAL LEADERBOARD**.
+
+    <Warning>
+      This action is irreversible. Confirm that all rounds are complete.
+    </Warning>
+  </Step>
+
+  <Step title="View final standings">
+    The system will:
+    - Set auction status to "completed"
+    - Calculate final scores (Net Worth + 10 lakh bonus per plot)
+    - Display the final leaderboard to all teams
+    - Rank teams by final score
+  </Step>
+</Steps>
+
+## Admin FAB menu
+
+The floating action button (🚀) in the bottom-right provides quick access to:
+
+- **Show Map**: Display the full city map with plot ownership
+- **Team Infos**: View detailed team statistics and budgets
+- **Connections**: See which teams are online/offline
+- **Save / Load**: Backup and restore auction state
+
+## Team management
+
+### Banning teams
+
+If a team is misbehaving, you can ban them from the team info panel:
+
+1. Click the FAB menu → **Team Infos**
+2. Find the team in the list
+3. Click **Toggle Ban**
+4. Banned teams are immediately disconnected
+
+<Warning>
+  Banned teams cannot reconnect until unbanned. Use this feature carefully.
+</Warning>
+
+### Force resell plots
+
+If you need to resell a plot that was already sold:
+
+1. Find the plot in the **Plot Status** table
+2. Click the **Resell** button in the Actions column
+3. The plot returns to "pending" status and can be auctioned again
+
+## Troubleshooting
+
+### Teams not seeing updates
+
+If teams aren't receiving real-time updates:
+
+1. Check the connection count - it should include all teams
+2. Verify teams show as "Online" in the connections modal
+3. Ask teams to refresh their browser
+4. Check the backend server logs for Socket.IO errors
+
+### Countdown not working
+
+If the sell countdown doesn't finalize:
+
+1. Ensure the auction status is "running"
+2. Check that a plot is currently active
+3. Verify the backend is processing the sell action
+4. Try clicking SELL again
+
+### Lost admin session
+
+If you're logged out unexpectedly:
+
+1. Click the **🔒 Lock** button to manually log out
+2. Refresh the page
+3. Re-enter the admin password
+
+<Note>
+  Admin authentication is stored in localStorage. Clearing browser data will require re-authentication.
+</Note>
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Monitor connections" icon="wifi">
+    Regularly check the online/offline status to ensure all teams are connected before starting each round.
+  </Card>
+  
+  <Card title="Clear communication" icon="megaphone">
+    Announce round changes and phase transitions to teams before executing them.
+  </Card>
+  
+  <Card title="Use pause wisely" icon="pause">
+    Pause the auction during breaks or technical issues rather than stopping mid-round.
+  </Card>
+  
+  <Card title="Save state regularly" icon="save">
+    Use the Save/Load feature to backup auction progress at key milestones.
+  </Card>
+</CardGroup>
+
+## Next steps
+
+<Card title="Policy rounds guide" icon="file-text" href="/guides/policy-rounds">
+  Learn how to manage policy adjustment rounds with questions and plot modifications
+</Card>

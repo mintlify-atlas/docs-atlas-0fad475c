@@ -1,0 +1,482 @@
+---
+title: Admin panel
+description: Complete control interface for managing auctions, teams, and policies
+---
+
+The admin panel is the control center for running AuctionFest simulations. It provides real-time monitoring, auction controls, plot adjustments, and team management in a comprehensive dashboard.
+
+## Accessing the admin panel
+
+Navigate to `/admin` and enter the admin password:
+
+1. **Password gate:** Enter the admin password (set in environment variables)
+2. **Authentication stored:** Password saved in localStorage for session
+3. **Lock button:** Click to logout and require password re-entry
+
+<Warning>
+  Never share the admin password with participants. Admin access provides full control over the simulation.
+</Warning>
+
+## Dashboard overview
+
+The admin panel uses a two-column layout:
+
+- **Left:** Controls, round selector, policy tools, connected teams
+- **Right:** Full plot status table with real-time updates
+
+### Header information
+
+**Status indicators:**
+- **Online count:** Number of connected clients (teams + admin + live view)
+- **Auction status:** not_started, running, selling, paused, or completed
+- **Current plot:** Plot number currently up for auction
+- **Current round:** 1-6 round indicator
+
+**Admin actions:**
+- **Theme toggle:** Switch between light/dark themes
+- **Lock button:** Logout and return to password gate
+
+<Info>
+  The online count includes all connected clients. Subtract 1-2 for admin and leaderboard displays to get the team count.
+</Info>
+
+## Auction controls
+
+### Primary actions
+
+<CardGroup cols={2}>
+  <Card title="START / RESUME" icon="play">
+    Begin auction or resume after pause
+  </Card>
+  <Card title="PAUSE" icon="pause">
+    Temporarily halt bidding (teams stay connected)
+  </Card>
+  <Card title="PREV" icon="arrow-left">
+    Return to previous plot (only if auction is running)
+  </Card>
+  <Card title="NEXT" icon="arrow-right">
+    Advance to next plot without selling current
+  </Card>
+</CardGroup>
+
+### SELL: The countdown mechanism
+
+The **START COUNTDOWN (SELL)** button triggers plot finalization:
+
+1. Click SELL to start 3-second countdown
+2. Red overlay appears on all team dashboards
+3. Teams can place last-second bids during countdown
+4. After 3 seconds, plot is sold to highest bidder
+5. Admin automatically advances to next pending plot
+
+<Note>
+  If no bids exist when SELL is clicked, the plot is marked "unsold" and skipped.
+</Note>
+
+**Use cases:**
+- Normal progression: NEXT → wait for bids → SELL
+- Skip plot: NEXT (if no interest)
+- Reverse: PREV (if mistake)
+- Emergency stop: PAUSE
+
+### RESET: Complete restart
+
+The RESET button provides full auction reset:
+
+1. Click RESET once
+2. Button changes to "CONFIRM" for 3 seconds
+3. Click CONFIRM to execute reset
+4. All clients reload automatically
+5. All data returns to initial state
+
+<Warning>
+  RESET is permanent and cannot be undone. All bid history, adjustments, and progress are lost.
+</Warning>
+
+## Live bid widget
+
+During bidding rounds (R1 & R4), a live widget displays:
+
+**Current plot info:**
+- Plot number
+- Highest bid amount (in ₹, formatted with Indian notation)
+- Current highest bidder (team name)
+
+**Selling overlay:**
+- When SELL is active, countdown number (3-2-1) overlays the widget
+- Red background with "Selling..." label
+- Prevents confusion about auction state
+
+<Info>
+  The live widget only appears during Round 1 and Round 4. It's hidden during adjustment rounds.
+</Info>
+
+## Round selector
+
+Switch between rounds manually using the 6-button round selector:
+
+**Round types:**
+- **R1, R4:** Bidding rounds
+- **R2, R3, R5, R6:** Adjustment/Policy rounds
+
+**Round switching:**
+1. Click desired round button (R1-R6)
+2. UI instantly updates to match round type
+3. Teams see appropriate interface (bid or policy view)
+4. Policy tools appear/disappear based on round type
+
+<Note>
+  Switching rounds does not affect plot status or progress. It only changes the UI context and available tools.
+</Note>
+
+## Policy & adjustment tools
+
+### Available in Round 2, 3, 5, 6 only
+
+During adjustment rounds, the policy panel becomes active:
+
+### Policy question system
+
+**Question bank:**
+- Pre-loaded questions specific to each round
+- Navigate with left/right arrows
+- Shows "Question X of Y" counter
+
+**Pushing questions:**
+1. Browse through question bank
+2. Click **PUSH** to broadcast to all teams
+3. Question appears on team dashboards immediately
+4. Map view activates with adjustment highlights
+
+<Accordion title="Example policy questions">
+  - "A new metro line is announced near the northern district"
+  - "Flooding risk increases in low-lying areas"
+  - "Government announces special economic zone in the east"
+  - "Property tax rates increase in the city center"
+</Accordion>
+
+### Manual plot adjustment
+
+Adjust plot values using percentage changes:
+
+**Input fields:**
+- **Plots:** Comma-separated plot numbers (e.g., "1,2,5,8")
+- **Percentage:** Positive or negative (e.g., +20 or -15)
+
+**Process:**
+1. Enter plot number(s) in first field
+2. Enter adjustment percentage in second field
+3. Click **APPLY**
+4. Confirmation message shows how many plots were adjusted
+5. Teams see adjustments on map with color coding
+
+**Calculation:**
+```
+Adjustment Amount = Current Plot Value × (Percentage ÷ 100)
+New Total Value = Old Total Value + Adjustment Amount
+```
+
+<Info>
+  Adjustments are cumulative across rounds. Each adjustment is calculated on the current total value, not the base price.
+</Info>
+
+### Undo adjustment
+
+Revert the most recent adjustment transaction:
+
+1. Click **UNDO** button (circular arrow icon)
+2. Last adjustment is reversed
+3. Plot values restore to previous state
+4. Teams see updated values immediately
+
+<Warning>
+  UNDO only reverts the most recent transaction. It cannot undo multiple adjustments at once or undo across rounds.
+</Warning>
+
+## Round 4: Sell & rebid phase
+
+Round 4 introduces a marketplace where teams can sell plots they own:
+
+### Two-phase system
+
+<Tabs>
+  <Tab title="Phase 1: Sell phase">
+    **Activating sell phase:**
+    1. Set round to R4
+    2. Click "START SELL PHASE" in Round 4 panel
+    3. Teams see "My Portfolio" interface
+    4. Teams can list plots for 100-110% of value
+    
+    **Admin view:**
+    - See all active listings in "Listed for Sale" table
+    - Shows plot number, team name, asking price
+    - Scrollable list if many listings
+    
+    **During sell phase:**
+    - Teams cannot bid (bid interface disabled)
+    - Teams can UNSELL plots before phase closes
+    - No plots go to auction yet
+  </Tab>
+  <Tab title="Phase 2: Bid phase">
+    **Closing sell phase:**
+    1. Click "END SELL → START BIDDING"
+    2. Confirm dialog appears
+    3. System creates queue of unsold plots
+    4. Bid phase begins
+    
+    **Admin actions:**
+    - Use NEXT to advance through plot queue
+    - Use SELL to finalize each plot
+    - Original sellers cannot bid on their plots
+    
+    **Bid phase info:**
+    - Shows "X unsold listed plots" count
+    - Standard bidding rules apply
+    - Starting price = seller's asking price
+  </Tab>
+</Tabs>
+
+<Note>
+  The Round 4 panel only appears when round is set to 4. It's hidden during other rounds.
+</Note>
+
+### Listed plots table
+
+During sell phase, view all active listings:
+
+- **Plot number:** Which plot is listed
+- **Team name:** Who owns the plot
+- **Asking price:** Listed price (₹, formatted)
+
+**Scrollable table:** Up to 200px height, scrolls if many listings
+
+## End game button
+
+### Available in Round 6 only
+
+After Round 6 adjustments are complete:
+
+1. Red "END GAME" button appears
+2. Warns: "This will show final leaderboard to all teams"
+3. Click to confirm
+4. Auction status changes to "completed"
+5. All teams see final leaderboard with rankings
+6. Scores calculated with ₹10 lakh bonus per plot
+
+<Warning>
+  Ending the game cannot be reversed without a full RESET. Make sure all adjustments are finalized first.
+</Warning>
+
+## Plot status table
+
+The main table shows real-time plot data:
+
+### Columns
+
+| Column | Description |
+|--------|-------------|
+| **#** | Plot number (bold) |
+| **Type** | Plot type (e.g., Residential, Commercial, Mixed) |
+| **Base Price** | Original calculated price (area × rate) |
+| **Curr. Price** | Current bid or total price with adjustments |
+| **Adj.** | Adjustment amount (green for +, red for -) |
+| **Status** | pending, active, sold, or unsold |
+| **Team** | Owner team name (if sold) |
+| **Actions** | Resell button for sold plots |
+
+### Status badges
+
+- **Pending:** Gray — Not yet auctioned
+- **Active:** Blue — Currently up for bids
+- **Sold:** Green — Purchased by a team
+- **Unsold:** Red — Failed to sell
+
+### Active plot highlighting
+
+The current plot row is highlighted:
+
+- Bold border
+- Background color change
+- Scroll-into-view on change
+
+### Resell action
+
+For sold plots, a **Resell** button allows force-reselling:
+
+1. Click Resell on any sold plot
+2. Plot returns to "pending" status
+3. Original buyer refunded
+4. Plot goes back into auction queue
+
+<Note>
+  Use Resell sparingly — only for mistakes or technical issues. It disrupts team strategy.
+</Note>
+
+## Connected teams panel
+
+Monitor which teams are online:
+
+**Online section:**
+- Shows team names currently connected
+- Green badge for online status
+- Excludes "Admin" and "Leaderboard" clients
+
+**Offline section:**
+- Shows teams that exist but aren't connected
+- Red badge for offline status
+- Helps identify who needs technical support
+
+<Info>
+  If a team connects from multiple devices, only the most recent connection stays active. Previous connections are automatically disconnected.
+</Info>
+
+## Floating admin menu (FAB)
+
+The rocket icon in bottom-right opens quick access to:
+
+### Menu options
+
+<CardGroup cols={2}>
+  <Card title="Show map" icon="map">
+    Full-screen city map with all plots
+  </Card>
+  <Card title="Team infos" icon="users">
+    Leaderboard and detailed team stats
+  </Card>
+  <Card title="Connections" icon="wifi">
+    Online/offline team list (larger view)
+  </Card>
+  <Card title="Save / Load" icon="floppy-disk">
+    Download or restore auction state (future feature)
+  </Card>
+</CardGroup>
+
+**FAB behavior:**
+- Click rocket to expand menu
+- Click X to close menu
+- Click any option to open modal
+- Click outside modal to close
+
+### Map modal
+
+Full-screen interactive map showing:
+
+- All plots with color coding
+- Sold plots show owner team color
+- Adjustment indicators (green +, red -)
+- Current plot highlighted
+- Round 4 sell offers marked
+
+### Team infos modal
+
+Detailed leaderboard and management:
+
+**Team cards:**
+- Net worth, cash, plot values
+- Plots owned count
+- Final score calculation
+- Ban/Unban toggle button
+
+**Ban functionality:**
+1. Click Ban next to team name
+2. Team immediately disconnected
+3. Cannot reconnect until unbanned
+4. LocalStorage cleared on their device
+
+<Warning>
+  Banning disconnects the team and prevents reconnection. Use for disruptive behavior or technical issues only.
+</Warning>
+
+## Keyboard shortcuts
+
+Speed up auction management:
+
+| Shortcut | Action |
+|----------|--------|
+| `Space` | SELL (start countdown) |
+| `→` | NEXT plot |
+| `←` | PREV plot |
+| `P` | PAUSE/RESUME |
+| `Esc` | Close open modals |
+
+<Note>
+  Keyboard shortcuts work when no input field is focused.
+</Note>
+
+## Best practices
+
+### Pre-auction setup
+
+1. Verify all teams are connected (check connections panel)
+2. Set round to R1
+3. Review plot table for correct base prices
+4. Test START/PAUSE to ensure WebSocket works
+5. Prepare policy questions for adjustment rounds
+
+### During auction
+
+- Keep plot table visible at all times
+- Announce plot numbers verbally before NEXT
+- Give teams 10-15 seconds per plot for bidding
+- Use PAUSE for breaks or technical issues
+- Monitor online count for disconnections
+
+### Round transitions
+
+- Pause before switching rounds
+- Announce round change to teams
+- Switch round in admin panel
+- Push policy question (adjustment rounds)
+- Resume auction
+
+### Round 4 management
+
+1. Pause auction before Round 4
+2. Announce sell phase start
+3. Click "START SELL PHASE"
+4. Give teams 2-3 minutes to list plots
+5. Review listings in admin panel
+6. Click "END SELL → START BIDDING"
+7. Auction unsold listings one by one
+
+### Ending the game
+
+1. Complete all Round 6 adjustments
+2. Verify final scores look correct
+3. Pause auction
+4. Announce final leaderboard coming
+5. Click "END GAME"
+6. Teams see final rankings
+
+## Troubleshooting
+
+### Team can't connect
+
+- Check if another device is using same team ID
+- Verify team isn't banned
+- Try refreshing team's browser
+- Check network connectivity
+
+### Bids not appearing
+
+- Ensure auction status is "running" (not paused/selling)
+- Verify team is connected (online panel)
+- Check team has sufficient budget
+- Confirm round is 1 or 4 (not adjustment round)
+
+### Plot stuck on "active"
+
+- Use NEXT to manually advance
+- Or use SELL to finalize and move on
+- Check if teams are disconnected
+
+### Adjustment not applied
+
+- Verify plot number is correct
+- Check percentage format (use + or - prefix)
+- Ensure round is 2, 3, 5, or 6
+- Try UNDO and reapply
+
+<Info>
+  For critical issues, use RESET to restart the simulation. Make sure to announce this to teams first.
+</Info>

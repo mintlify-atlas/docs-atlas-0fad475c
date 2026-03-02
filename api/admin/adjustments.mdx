@@ -1,0 +1,430 @@
+---
+title: Plot adjustment endpoints
+description: Admin endpoints for modifying plot prices and managing policy questions
+---
+
+## Overview
+
+The adjustment endpoints allow administrators to modify plot prices during policy rounds (Rounds 2, 3, 5, and 6), manage price adjustments, and push policy questions to teams. These endpoints are critical for simulating real-world policy impacts on land values.
+
+## Authentication
+
+All admin endpoints require authentication. The admin password is verified on the server side.
+
+## Plot price adjustments
+
+### POST /api/admin/adjust-plot
+
+Apply percentage-based price adjustments to one or more plots.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/adjust-plot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "plot_numbers": [1, 2, 3],
+    "adjustment_percent": 15.5
+  }'
+```
+
+**Parameters:**
+
+<ParamField body="plot_numbers" type="array" required>
+  Array of plot numbers to adjust. Can be a single plot or multiple plots.
+  
+  Example: `[1, 5, 12]` or `[7]`
+</ParamField>
+
+<ParamField body="adjustment_percent" type="number" required>
+  Percentage adjustment to apply. Can be positive (increase) or negative (decrease).
+  
+  - Positive values increase plot price: `15.5` = +15.5%
+  - Negative values decrease plot price: `-10` = -10%
+  - Calculated on the base price (not cumulative)
+</ParamField>
+
+**Behavior:**
+- Calculates new price: `new_price = base_price * (1 + adjustment_percent / 100)`
+- Updates `round_adjustment` field with the absolute change amount
+- Stores adjustment in transaction history for undo capability
+- Works on both sold and unsold plots
+
+**Response:**
+
+<ResponseField name="results" type="array">
+  Array of adjustment results for each plot
+  
+  <Expandable title="Result object structure">
+    <ResponseField name="plot_number" type="number">
+      The plot number that was adjusted
+    </ResponseField>
+    
+    <ResponseField name="old_price" type="number">
+      Previous total plot price (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="new_price" type="number">
+      New total plot price after adjustment (in ₹)
+    </ResponseField>
+    
+    <ResponseField name="adjustment_amount" type="number">
+      Absolute price change in rupees (can be positive or negative)
+    </ResponseField>
+    
+    <ResponseField name="adjustment_percent" type="number">
+      The percentage adjustment applied
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example response:**
+
+```json
+{
+  "results": [
+    {
+      "plot_number": 1,
+      "old_price": 1000000,
+      "new_price": 1155000,
+      "adjustment_amount": 155000,
+      "adjustment_percent": 15.5
+    },
+    {
+      "plot_number": 2,
+      "old_price": 850000,
+      "new_price": 981750,
+      "adjustment_amount": 131750,
+      "adjustment_percent": 15.5
+    }
+  ]
+}
+```
+
+**Socket.IO event emitted:**
+- `plot_adjustment`: Broadcasts the adjustment to all clients for each affected plot
+
+**Use cases:**
+- Simulating infrastructure development (positive adjustment)
+- Implementing zoning restrictions (negative adjustment)
+- Applying environmental policy impacts
+- Reflecting market changes from policy decisions
+
+---
+
+### POST /api/admin/undo-adjustment
+
+Undo the most recent plot adjustment transaction.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/undo-adjustment \
+  -H "Content-Type: application/json"
+```
+
+**Behavior:**
+- Retrieves the last adjustment from transaction history
+- Reverts all plots affected by that transaction to their previous prices
+- Removes the transaction from history
+
+<Note>
+Only the most recent adjustment can be undone. This operation cannot undo multiple transactions back.
+</Note>
+
+**Response:**
+
+<ResponseField name="message" type="string">
+  Confirmation message indicating which plots were reverted
+  
+  Example: `"Undid adjustment for plots: 1, 2, 3"`
+</ResponseField>
+
+<ResponseField name="reverted_plots" type="array">
+  Array of plot numbers that were reverted
+</ResponseField>
+
+<ResponseField name="previous_state" type="object">
+  The state that was restored, including previous prices
+</ResponseField>
+
+**Error conditions:**
+- Returns 404 if no adjustments exist in history
+- Returns 400 if adjustment history is corrupted
+
+**Example response:**
+
+```json
+{
+  "message": "Undid adjustment for plots: 1, 2, 3",
+  "reverted_plots": [1, 2, 3],
+  "previous_state": {
+    "1": { "price": 1000000 },
+    "2": { "price": 850000 },
+    "3": { "price": 1200000 }
+  }
+}
+```
+
+**Socket.IO event emitted:**
+- `plot_adjustment`: Broadcasts the reversion for each affected plot
+
+---
+
+## Policy question management
+
+### POST /api/admin/push-question
+
+Push a policy question to all connected teams.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/push-question \
+  -H "Content-Type: application/json" \
+  -d '{
+    "policy_description": "New metro line announced: All plots within 500m of stations +20%"
+  }'
+```
+
+**Parameters:**
+
+<ParamField body="policy_description" type="string" required>
+  The policy question or announcement to display to teams.
+  
+  Should describe the policy and its impact on plot values. This text is displayed prominently on team dashboards.
+</ParamField>
+
+**Behavior:**
+- Broadcasts the policy question to all connected team clients
+- Displays in a modal or notification on team dashboards
+- Used during rounds 2, 3, 5, and 6 (policy rounds)
+
+**Response:**
+
+<ResponseField name="message" type="string">
+  Confirmation message: `"Question pushed successfully"`
+</ResponseField>
+
+<ResponseField name="policy_description" type="string">
+  Echo of the policy description that was sent
+</ResponseField>
+
+**Socket.IO event emitted:**
+- `policy_question_pushed`: Sends the policy text to all team clients
+
+**Best practices:**
+- Keep questions concise but informative
+- Clearly state which plots are affected
+- Include the percentage adjustment in the description
+- Use during appropriate policy rounds only
+
+**Example policy questions:**
+
+<CodeGroup>
+```text Infrastructure
+"New metro line announced: All plots within 500m of stations +20%"
+```
+
+```text Environmental
+"Protected wetland designation: Plots 5, 8, 12 reduced by 25% due to development restrictions"
+```
+
+```text Zoning
+"Commercial zoning approved: Plots near market (1-6) increase by 30%"
+```
+
+```text Economic
+"Economic downturn: All residential plots -15% due to reduced demand"
+```
+</CodeGroup>
+
+---
+
+## Plot resell management
+
+### POST /api/admin/force-resell/{plot_number}
+
+Force a sold plot back into the auction for resale.
+
+```bash
+curl -X POST http://localhost:8000/api/admin/force-resell/5 \
+  -H "Content-Type: application/json"
+```
+
+**Path parameters:**
+
+<ParamField path="plot_number" type="number" required>
+  The number of the plot to resell (must be a sold plot)
+</ParamField>
+
+**Requirements:**
+- Plot must currently have status `sold`
+- Plot must have a winner team assigned
+
+**Behavior:**
+- Reverts plot status from `sold` to `pending`
+- Refunds the purchase amount to the team that owned it
+- Clears current bid and winner information
+- Makes plot available for bidding again
+
+**Response:**
+
+<ResponseField name="plot_number" type="number">
+  The plot that was put back up for resale
+</ResponseField>
+
+<ResponseField name="previous_owner" type="string">
+  Team ID that previously owned the plot
+</ResponseField>
+
+<ResponseField name="refund_amount" type="number">
+  Amount refunded to the previous owner (in ₹)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  New plot status: `"pending"`
+</ResponseField>
+
+**Example response:**
+
+```json
+{
+  "plot_number": 5,
+  "previous_owner": "team_001",
+  "refund_amount": 1250000,
+  "status": "pending"
+}
+```
+
+**Socket.IO events emitted:**
+- `plot_update`: Broadcasts the plot's new pending status
+- `team_update`: Updates the previous owner's budget with refund
+
+**Use cases:**
+- Correcting mistakes during live auction
+- Handling disputes about plot sales
+- Reselling plots during Round 4 sell phase
+- Testing and demonstration purposes
+
+---
+
+## GET /api/admin/questions/{round}
+
+Retrieve pre-defined policy questions for a specific round.
+
+```bash
+curl -X GET http://localhost:8000/api/admin/questions/2
+```
+
+**Path parameters:**
+
+<ParamField path="round" type="number" required>
+  Round number (2, 3, 5, or 6) - policy rounds only
+</ParamField>
+
+**Response:**
+
+<ResponseField name="questions" type="array">
+  Array of policy question objects for the specified round
+  
+  <Expandable title="Question object structure">
+    <ResponseField name="id" type="number">
+      Question identifier
+    </ResponseField>
+    
+    <ResponseField name="round" type="number">
+      The round this question belongs to
+    </ResponseField>
+    
+    <ResponseField name="policy_description" type="string">
+      The policy question text
+    </ResponseField>
+    
+    <ResponseField name="affected_plots" type="array">
+      Array of plot numbers affected by this policy
+    </ResponseField>
+    
+    <ResponseField name="adjustment_percent" type="number">
+      Suggested percentage adjustment for this policy
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Example response:**
+
+```json
+[
+  {
+    "id": 1,
+    "round": 2,
+    "policy_description": "Metro station announced: Plots 1-4 increase by 25%",
+    "affected_plots": [1, 2, 3, 4],
+    "adjustment_percent": 25
+  },
+  {
+    "id": 2,
+    "round": 2,
+    "policy_description": "Flood risk identified: Plots 10-12 decrease by 20%",
+    "affected_plots": [10, 11, 12],
+    "adjustment_percent": -20
+  }
+]
+```
+
+**When to use:**
+- During policy rounds to get pre-defined questions
+- Admin UI displays these for quick selection
+- Ensures consistency in policy application across games
+
+---
+
+## Error responses
+
+All adjustment endpoints may return the following errors:
+
+<ResponseField name="error" type="object">
+  <Expandable title="Error object structure">
+    <ResponseField name="detail" type="string">
+      Human-readable error message
+    </ResponseField>
+    
+    <ResponseField name="status_code" type="number">
+      HTTP status code
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+**Common error scenarios:**
+
+| Status | Scenario | Detail message |
+|--------|----------|----------------|
+| 400 | Invalid plot numbers | "Plot numbers [X, Y] do not exist" |
+| 400 | Invalid percentage | "Adjustment percent must be a valid number" |
+| 400 | Empty plot array | "At least one plot number is required" |
+| 401 | Not authenticated | "Admin authentication required" |
+| 404 | No undo history | "No adjustments to undo" |
+| 404 | Plot not found | "Plot {number} not found" |
+| 404 | Plot not sold | "Plot {number} is not sold and cannot be resold" |
+| 500 | Database error | "Failed to apply adjustment" |
+
+**Example error response:**
+
+```json
+{
+  "detail": "Plot numbers [99, 100] do not exist",
+  "status_code": 400
+}
+```
+
+---
+
+## Adjustment workflow
+
+A typical policy round workflow:
+
+1. **Admin sets round** (e.g., Round 2) using `/api/admin/set-round`
+2. **Admin retrieves questions** for the round using `/api/admin/questions/2`
+3. **Admin selects a question** from the pre-defined list
+4. **Admin pushes question** to teams using `/api/admin/push-question`
+5. **Admin applies adjustments** to affected plots using `/api/admin/adjust-plot`
+6. **Teams see updated prices** in real-time via Socket.IO events
+7. **If mistake made**, admin can use `/api/admin/undo-adjustment` to revert
+
+<Tip>
+Always push the policy question before applying adjustments so teams understand why prices are changing.
+</Tip>

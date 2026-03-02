@@ -1,0 +1,208 @@
+---
+title: NeoInput
+description: A neo-brutalist styled text input component with optional label
+---
+
+The `NeoInput` component provides a text input field with neo-brutalist styling. It features bold borders, focus animations, and an optional label with consistent typography.
+
+## Props
+
+<ParamField path="label" type="string">
+  Optional label text displayed above the input field. Styled in bold uppercase with wide tracking.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes to apply to the input element itself (not the wrapper).
+</ParamField>
+
+<ParamField path="...props" type="React.InputHTMLAttributes<HTMLInputElement>">
+  All standard HTML input attributes are supported (type, placeholder, value, onChange, onKeyDown, etc.).
+</ParamField>
+
+## Basic usage
+
+```tsx
+import NeoInput from "@/components/neo/NeoInput";
+
+function MyComponent() {
+  const [value, setValue] = useState("");
+
+  return (
+    <NeoInput
+      type="text"
+      placeholder="Enter text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+    />
+  );
+}
+```
+
+## With label
+
+```tsx
+<NeoInput
+  label="Team Name"
+  type="text"
+  placeholder="Enter your team name"
+  value={teamName}
+  onChange={(e) => setTeamName(e.target.value)}
+/>
+```
+
+## Input types
+
+```tsx
+// Text input
+<NeoInput
+  label="Username"
+  type="text"
+  placeholder="Enter username"
+/>
+
+// Password input
+<NeoInput
+  label="Password"
+  type="password"
+  placeholder="Enter password"
+/>
+
+// Email input
+<NeoInput
+  label="Email"
+  type="email"
+  placeholder="Enter email"
+/>
+
+// Number input
+<NeoInput
+  label="Age"
+  type="number"
+  placeholder="Enter age"
+/>
+```
+
+## Usage examples
+
+### Login form
+
+From the home page (page.tsx:120):
+
+```tsx
+<div className="space-y-4">
+  <NeoInput
+    label="Team Name"
+    type="text"
+    placeholder="Enter your team name"
+    value={teamName}
+    onChange={(e) => setTeamName(e.target.value)}
+  />
+
+  <NeoInput
+    label="Passcode"
+    type="password"
+    placeholder="Enter passcode"
+    value={passcode}
+    onChange={(e) => setPasscode(e.target.value)}
+  />
+</div>
+```
+
+### Admin authentication
+
+From the admin panel (admin/page.tsx:552):
+
+```tsx
+<NeoInput
+  type="password"
+  placeholder="Enter Password"
+  value={adminPassInput}
+  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+    setAdminPassInput(e.target.value)
+  }
+  onKeyDown={(e: React.KeyboardEvent) =>
+    e.key === "Enter" && handleAdminLogin()
+  }
+/>
+```
+
+### Save dialog
+
+From the admin panel (admin/page.tsx:1760):
+
+```tsx
+<NeoInput
+  placeholder="Enter save label (e.g., 'Round 1 Complete')"
+  value={saveLabel}
+  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+    setSaveLabel(e.target.value)
+  }
+/>
+```
+
+## Keyboard events
+
+```tsx
+<NeoInput
+  type="text"
+  placeholder="Press Enter to submit"
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      handleSubmit();
+    }
+  }}
+/>
+```
+
+## Focus behavior
+
+The input automatically handles focus styling with the `neo-input` CSS class:
+
+- On focus: Background changes to `var(--color-surface)`
+- On focus: Input shifts -2px left and -2px up
+- On focus: Shadow appears at 4px offset for depth effect
+- Smooth transition animations for all state changes
+
+## Styling notes
+
+- Uses the `neo-input` class defined in globals.css:275
+- Border width controlled by `--neo-border-width` (default: 4px)
+- Border color uses `var(--color-border)`
+- Border radius controlled by `--neo-radius`
+- Background color: `var(--color-bg)`
+- Text color: `var(--color-text)`
+- Placeholder has 50% opacity
+- Bold font weight for input text
+- Padding: 0.75rem vertical, 1rem horizontal
+- Full width by default (`w-full` on wrapper)
+- Label and input have 8px gap (`gap-2`)
+
+## Label styling
+
+When a label is provided, it renders with:
+
+```css
+font-weight: bold;
+text-transform: uppercase;
+letter-spacing: 0.025em; /* tracking-wide */
+font-size: 0.875rem; /* text-sm */
+```
+
+## CSS variables used
+
+- `--neo-border-width`: Border thickness (4px)
+- `--neo-radius`: Border radius
+- `--color-border`: Border color
+- `--color-bg`: Background color
+- `--color-surface`: Focus background color
+- `--color-text`: Text color
+- `--neo-shadow-color`: Focus shadow color
+- `--neo-transition-fast`: Transition duration
+
+## Theme compatibility
+
+The input adapts to different themes:
+
+- **Pixel Art themes**: Custom pixel-art border styling
+- **Glass themes**: Semi-transparent backgrounds with blur
+- All themes respect CSS custom properties for consistent theming
