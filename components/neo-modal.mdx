@@ -1,0 +1,109 @@
+---
+title: NeoModal
+description: Modal dialog component with backdrop and animations
+---
+
+NeoModal provides a centered modal dialog with smooth animations, backdrop overlay, and neo-brutalist styling for confirmation dialogs and detailed views.
+
+## Props
+
+<ParamField path="isOpen" type="boolean" required>
+  Controls modal visibility
+</ParamField>
+
+<ParamField path="onClose" type="() => void" required>
+  Callback function when modal should close (backdrop click or X button)
+</ParamField>
+
+<ParamField path="title" type="string">
+  Optional modal title displayed in header
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Modal content
+</ParamField>
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Backdrop overlay" icon="window-restore">
+    Semi-transparent black backdrop (80% opacity) with blur effect
+  </Card>
+  <Card title="Smooth animations" icon="wand-magic-sparkles">
+    Framer Motion animations for enter/exit transitions
+  </Card>
+  <Card title="Click to close" icon="hand-pointer">
+    Clicking backdrop closes modal
+  </Card>
+  <Card title="Close button" icon="x">
+    X button in top-right corner with hover effect
+  </Card>
+</CardGroup>
+
+## Animation behavior
+
+```typescript Animation values
+initial={{ opacity: 0, scale: 0.9, y: 20 }}
+animate={{ opacity: 1, scale: 1, y: 0 }}
+exit={{ opacity: 0, scale: 0.9, y: 20 }}
+```
+
+The modal:
+- Fades in while scaling up from 90% to 100%
+- Slides up 20px during entrance
+- Reverses animation on exit
+
+## Usage example
+
+Basic modal with title:
+
+```tsx
+const [isModalOpen, setIsModalOpen] = useState(false);
+
+<NeoModal
+  isOpen={isModalOpen}
+  onClose={() => setIsModalOpen(false)}
+  title="Confirm Action"
+>
+  <p>Are you sure you want to proceed?</p>
+  <div className="flex gap-2 mt-4">
+    <NeoButton onClick={handleConfirm}>
+      Confirm
+    </NeoButton>
+    <NeoButton variant="secondary" onClick={() => setIsModalOpen(false)}>
+      Cancel
+    </NeoButton>
+  </div>
+</NeoModal>
+```
+
+## Styling
+
+### Container
+- Fixed positioning with centering (left-1/2, top-1/2 with -translate)
+- Max width: 512px (max-w-lg)
+- Z-index: 50
+- 8px shadow with neo-brutalist offset
+
+### Header
+- Border-bottom: 4px solid
+- Padding-bottom: 8px (pb-2)
+- Margin-bottom: 24px (mb-6)
+- Flexbox layout with space-between for title and close button
+
+### Close button
+- Hover effect: Red background with light text
+- Smooth color transition
+- 2px border (neo-border class)
+
+## Design notes
+
+- **z-index management** - Backdrop and modal are z-50 to appear above content
+- **AnimatePresence** - Handles exit animations when isOpen changes to false
+- **Accessibility** - Backdrop click provides intuitive close behavior
+- **Responsive** - Full width on mobile with horizontal padding
+
+## See also
+
+- [NeoCard](/components/neo-card) - Card container component
+- [NeoButton](/components/neo-button) - Button component for modal actions

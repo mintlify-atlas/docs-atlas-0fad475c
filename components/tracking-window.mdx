@@ -1,0 +1,241 @@
+---
+title: TrackingWindow
+description: Floating dashboard widget with plot filtering, map view, and portfolio management
+---
+
+TrackingWindow is a sophisticated floating widget that provides teams with advanced portfolio tracking, plot filtering, and an integrated city map view, accessible via a floating action button (FAB) on the dashboard.
+
+## Overview
+
+The TrackingWindow component appears as a draggable, resizable modal overlay on the team dashboard, offering multiple views:
+
+<CardGroup cols={2}>
+  <Card title="My plots" icon="user">
+    View all plots owned by your team
+  </Card>
+  <Card title="Listed plots" icon="tag">
+    See plots currently in the Round 4 rebid marketplace
+  </Card>
+  <Card title="Sold listings" icon="check">
+    Track successfully sold rebid offers
+  </Card>
+  <Card title="City map" icon="map">
+    Full interactive map with zoom and pan
+  </Card>
+</CardGroup>
+
+## Props
+
+<ParamField path="currentPlot" type="object" required>
+  Current auction plot data
+</ParamField>
+
+<ParamField path="status" type="string" required>
+  Auction status: `not_started`, `running`, `paused`, or `completed`
+</ParamField>
+
+<ParamField path="plots" type="array" default="[]">
+  Array of all plot objects
+</ParamField>
+
+<ParamField path="allTeams" type="array" default="[]">
+  Array of all team objects for name lookup
+</ParamField>
+
+<ParamField path="userTeam" type="object">
+  Current user's team data
+</ParamField>
+
+<ParamField path="currentRound" type="number" default="1">
+  Current auction round (1-6)
+</ParamField>
+
+<ParamField path="rebidOffers" type="array" default="[]">
+  Active rebid marketplace offers
+</ParamField>
+
+<ParamField path="rebidOffersSold" type="array" default="[]">
+  Sold rebid offers
+</ParamField>
+
+<ParamField path="forceOpen" type="boolean" default="false">
+  Force modal to open (used by parent component)
+</ParamField>
+
+<ParamField path="onClose" type="function">
+  Callback when tracker should close
+</ParamField>
+
+## View modes
+
+### My plots view
+
+Displays all plots owned by the user's team:
+
+```tsx Plot display
+- Plot number and type
+- Purchase price
+- Current value (price + adjustments)
+- Status (active, sold, pending)
+- Value change indicator
+```
+
+### Listed plots view
+
+Shows active Round 4 rebid offers:
+
+```tsx Listing display
+- Plot number
+- Seller team name
+- Asking price
+- Time listed
+- Quick buy button (if available)
+```
+
+### Sold listings view
+
+Tracks completed rebid transactions:
+
+```tsx Sold listing display
+- Plot number
+- Seller and buyer team names
+- Sale price
+- Transaction timestamp
+```
+
+### City map view
+
+Interactive map with:
+- **Zoom controls** - Scale from 50% to 200%
+- **Pan/drag** - Click and drag to navigate
+- **Full-screen toggle** - Maximize map to full viewport
+- **Plot tooltips** - Hover for plot details
+- **Color coding** - See Round-specific plot coloring
+
+## FAB menu
+
+Floating action button in bottom-right corner with options:
+
+<Tabs>
+  <Tab title="My Plots">
+    Opens tracker filtered to user's owned plots
+  </Tab>
+  
+  <Tab title="Listed">
+    Opens tracker showing rebid marketplace listings
+  </Tab>
+  
+  <Tab title="Sold">
+    Opens tracker showing completed rebid sales
+  </Tab>
+  
+  <Tab title="All Plots">
+    Opens tracker with full plot table
+  </Tab>
+  
+  <Tab title="Map">
+    Opens full interactive city map
+  </Tab>
+</Tabs>
+
+## Interaction features
+
+### Dragging
+
+```typescript Drag implementation
+const handleDragStart = useCallback(() => {
+  isDragging.current = true;
+}, []);
+
+const handleDragEnd = useCallback(() => {
+  isDragging.current = false;
+}, []);
+```
+
+Window can be dragged by clicking and holding anywhere on the header.
+
+### Zooming (map view)
+
+```typescript Zoom controls
+const handleZoomIn = () => setScale(prev => Math.min(prev + 0.1, 2));
+const handleZoomOut = () => setScale(prev => Math.max(prev - 0.1, 0.5));
+```
+
+Zoom range: 50% - 200%
+
+### Full-screen mode
+
+Toggle expands window to cover entire viewport:
+
+```tsx Full-screen classes
+isFullScreen
+  ? "fixed inset-0 w-screen h-screen"
+  : "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[85vh] max-w-6xl"
+```
+
+## Table integration
+
+Uses NeoTable component for plot lists:
+
+```tsx Table columns
+[
+  { accessorKey: "number", header: "#" },
+  { accessorKey: "plot_type", header: "Type" },
+  { accessorKey: "current_value", header: "Value" },
+  { accessorKey: "round_adjustment", header: "Adj." },
+  { accessorKey: "status", header: "Status" },
+]
+```
+
+<Note>
+  Clicking a row in the plot table highlights that plot on the map (if map view is active).
+</Note>
+
+## Performance optimizations
+
+### Memoization
+
+```typescript Memoized calculations
+const myPlots = useMemo(() => 
+  plots.filter(p => p.winner_team_id === userTeam?.id),
+  [plots, userTeam?.id]
+);
+```
+
+### Throttled interactions
+
+Drag and zoom events are throttled to 60fps for smooth performance.
+
+## Design notes
+
+- **z-index layering** - Tracker appears above dashboard content (z-40)
+- **Backdrop click** - Clicking outside window closes it
+- **Escape key** - Press Esc to close tracker
+- **Responsive sizing** - Adapts to screen size with maximum dimensions
+
+## Usage example
+
+```tsx from app/dashboard/page.tsx
+import TrackingWindow from "@/components/TrackingWindow";
+
+const [trackerOpen, setTrackerOpen] = useState(false);
+
+<TrackingWindow
+  currentPlot={currentPlot}
+  status={auctionStatus}
+  plots={plots}
+  allTeams={allTeams}
+  userTeam={userTeam}
+  currentRound={currentRound}
+  rebidOffers={rebidOffers}
+  rebidOffersSold={rebidOffersSold}
+  forceOpen={trackerOpen}
+  onClose={() => setTrackerOpen(false)}
+/>
+```
+
+## See also
+
+- [CityMap](/components/city-map) - Map visualization component
+- [NeoTable](/components/neo-table) - Table component for plot lists
+- [Team Dashboard](/features/team-dashboard) - Primary usage location

@@ -1,0 +1,198 @@
+---
+title: ThemeChanger
+description: Real-time theme customization component with color picker and font selection
+---
+
+ThemeChanger is an advanced theme customization component that allows admins to modify colors, fonts, and design tokens in real-time, with changes broadcast to all connected clients via Socket.IO.
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Color customization" icon="palette">
+    Hex color picker for all theme variables
+  </Card>
+  <Card title="Font selection" icon="font">
+    10+ font options from playful to technical
+  </Card>
+  <Card title="Preset themes" icon="swatchbook">
+    16 pre-built themes (Classic, Cyberpunk, Sunset, etc.)
+  </Card>
+  <Card title="Live broadcasting" icon="tower-broadcast">
+    Changes sync to all connected clients instantly
+  </Card>
+</CardGroup>
+
+## Theme variables
+
+### Color variables
+
+<ParamField path="--color-primary" type="color" default="#FF4D00">
+  Primary accent color used for buttons, badges, and highlights
+</ParamField>
+
+<ParamField path="--color-surface" type="color" default="#FFD700">
+  Card and surface background color
+</ParamField>
+
+<ParamField path="--color-bg" type="color" default="#FFFFFF">
+  Main background color
+</ParamField>
+
+<ParamField path="--color-secondary" type="color" default="#0087FF">
+  Secondary accent for info badges and elements
+</ParamField>
+
+<ParamField path="--color-danger" type="color" default="#FF0000">
+  Destructive actions and error states
+</ParamField>
+
+<ParamField path="--color-plots" type="color" default="#ff6347">
+  Plot-specific accent color
+</ParamField>
+
+### Font options
+
+```typescript Available fonts
+[
+  { value: "var(--font-inter)", label: "Default (Inter)" },
+  { value: "var(--font-space)", label: "Space Grotesk" },
+  { value: "var(--font-orbitron)", label: "Orbitron (Sci-Fi)" },
+  { value: "var(--font-rajdhani)", label: "Rajdhani (Tech)" },
+  { value: "var(--font-russo)", label: "Russo One (Bold)" },
+  { value: "var(--font-blackops)", label: "Black Ops (Military)" },
+  { value: "var(--font-bangers)", label: "Bangers (Comic)" },
+  { value: "var(--font-pacifico)", label: "Pacifico (Script)" },
+  { value: "var(--font-playfair)", label: "Playfair Display" },
+  { value: "var(--font-poppins)", label: "Poppins (Modern)" },
+]
+```
+
+## Preset themes
+
+ThemeChanger includes 16 pre-configured themes:
+
+<Tabs>
+  <Tab title="Professional">
+    - **Classic** - Orange and gold
+    - **Sky Blue** - Blue and cyan
+    - **Forest** - Green tones
+    - **Corporate** - Navy and gray
+  </Tab>
+  
+  <Tab title="Vibrant">
+    - **Sunset** - Orange to pink gradient
+    - **Cyberpunk** - Neon purple and cyan
+    - **Retro Wave** - Purple and pink
+    - **Lavender Dream** - Purple palette
+  </Tab>
+  
+  <Tab title="Monochrome">
+    - **Midnight** - Dark blue to black
+    - **Ocean** - Aqua theme
+    - **High Contrast** - Pure black and white
+    - **Pastel** - Soft pink and cream
+  </Tab>
+  
+  <Tab title="Specialty">
+    - **Earth Tones** - Browns and greens
+    - **Minimalist** - Gray scale
+    - **Neon Lime** - Bright lime green
+    - **Fire** - Red and orange
+  </Tab>
+</Tabs>
+
+## Broadcasting mechanism
+
+When an admin changes the theme, it broadcasts to all clients:
+
+```typescript Theme broadcasting (admin only)
+// Admin changes theme
+const broadcastTheme = () => {
+  if (socket && isAdmin) {
+    const theme = {
+      '--color-primary': primaryColor,
+      '--color-surface': surfaceColor,
+      '--color-bg': bgColor,
+      '--color-secondary': secondaryColor,
+      '--color-danger': dangerColor,
+      '--color-plots': plotsColor,
+      '--font-family': fontFamily,
+    };
+    socket.emit('broadcast_theme', theme);
+  }
+};
+
+// All clients receive and apply
+socket.on('theme_update', (theme) => {
+  applyTheme(theme);
+});
+```
+
+<Warning>
+  Only admin users can broadcast theme changes. Team dashboards and public views receive updates but cannot initiate broadcasts.
+</Warning>
+
+## Usage in admin panel
+
+```tsx from app/admin/page.tsx
+import { ThemeChanger } from "@/components/ThemeChanger";
+
+<ThemeChanger className="min-h-[3rem]" isAdmin={true} />
+```
+
+## Usage in team dashboard
+
+```tsx from app/dashboard/page.tsx
+<ThemeChanger className="p-2" />
+```
+
+<Note>
+  When isAdmin prop is not provided or false, the broadcast button is hidden.
+</Note>
+
+## UI components
+
+### Color picker
+
+Uses `react-colorful` for hex color selection:
+- Saturation/brightness square
+- Hue slider
+- Live preview of selected color
+- Hex input field
+
+### Font dropdown
+
+Uses `react-select` with:
+- Searchable options
+- Font preview in dropdown
+- Custom styling to match neo-brutalist theme
+
+### Preset buttons
+
+Grid of theme preset buttons:
+- Quick one-click theme application
+- Hover preview showing colors
+- Organized by category
+
+## Persistence
+
+Theme changes are stored in localStorage:
+
+```typescript
+localStorage.setItem('auction_theme', JSON.stringify(theme));
+```
+
+On page load, saved theme is automatically applied.
+
+## Design notes
+
+- **Modal interface** - Opens in full-screen modal for focused editing
+- **Real-time preview** - See changes immediately before broadcasting
+- **Reset option** - Return to default theme with one click
+- **Admin-only broadcast** - Prevents chaos from multiple theme sources
+
+## See also
+
+- [NeoModal](/components/neo-modal) - Modal component used by ThemeChanger
+- [NeoLayout](/components/neo-layout) - Applies theme variables to page
+- [Admin Panel](/features/admin-panel) - Admin controls including theme

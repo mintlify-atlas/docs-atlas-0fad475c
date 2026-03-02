@@ -1,0 +1,125 @@
+---
+title: NeoBadge
+description: Status and label badge component with neo-brutalist styling
+---
+
+NeoBadge is a small, bold status indicator component designed for displaying labels, statuses, and tags with high visual impact.
+
+## Props
+
+<ParamField path="variant" type="string" default="neutral">
+  Visual style variant:
+  - `success` - Green background for positive states
+  - `danger` - Red background for critical/error states
+  - `warning` - Surface color for warnings
+  - `info` - Secondary blue for informational badges
+  - `neutral` - Default background for standard labels
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Badge content (text or elements)
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes for custom styling
+</ParamField>
+
+## Variants
+
+<CardGroup cols={2}>
+  <Card title="Success" icon="check">
+    Green background - Used for completed, active, or positive states
+  </Card>
+  <Card title="Danger" icon="x">
+    Red background with light text - Used for errors, critical alerts, banned status
+  </Card>
+  <Card title="Warning" icon="triangle-exclamation">
+    Surface color - Used for warnings and cautions
+  </Card>
+  <Card title="Info" icon="info">
+    Blue background - Used for informational labels and round indicators
+  </Card>
+</CardGroup>
+
+## Usage examples
+
+### Auction status indicators
+
+From the admin panel header:
+
+```tsx Admin status display
+<NeoBadge
+  variant={
+    isRunning
+      ? "success"
+      : isPaused
+        ? "neutral"
+        : isCompleted
+          ? "danger"
+          : "neutral"
+  }
+>
+  {status.replace("_", " ")}
+</NeoBadge>
+```
+
+### Round indicators
+
+```tsx
+<NeoBadge variant="info">
+  {getRoundLabel(currentRound)}
+</NeoBadge>
+```
+
+### Plot status badges
+
+From the admin plot table:
+
+```tsx
+<NeoBadge
+  variant={
+    row.original.status === "sold"
+      ? "success"
+      : row.original.status === "unsold"
+        ? "danger"
+        : row.original.status === "active"
+          ? "info"
+          : "neutral"
+  }
+>
+  {row.original.status}
+</NeoBadge>
+```
+
+### Team connection status
+
+```tsx
+<NeoBadge variant={isConnected ? "success" : "danger"}>
+  {isConnected ? "Live" : "Offline"}
+</NeoBadge>
+```
+
+## Styling
+
+NeoBadge uses CSS variables for theming:
+
+- `--color-success` - Success variant background
+- `--color-danger` - Danger variant background
+- `--color-surface` - Warning variant background
+- `--color-secondary` - Info variant background
+- `--color-bg` - Neutral variant background
+- `--color-border` - Border color (2px)
+- `--neo-radius` - Border radius
+
+## Design notes
+
+- **Uppercase text** - All badge text is automatically uppercased
+- **Bold weight** - Uses font-bold for maximum readability
+- **Compact size** - Small padding (px-2 py-1) for inline use
+- **Border emphasis** - 2px border matches neo-brutalist style
+- **High contrast** - Color choices ensure text is always readable
+
+## See also
+
+- [NeoButton](/components/neo-button) - Action buttons
+- [Admin Panel](/features/admin-panel) - Uses badges extensively for status display

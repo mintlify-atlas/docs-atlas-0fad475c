@@ -1,0 +1,138 @@
+---
+title: NeoLayout
+description: Root layout wrapper with theme variables and optional container
+---
+
+NeoLayout is the root layout component that provides theme variables, background color, and optional content containerization for pages.
+
+## Props
+
+<ParamField path="children" type="React.ReactNode" required>
+  Page content to render
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS classes applied to root div
+</ParamField>
+
+<ParamField path="containerized" type="boolean" default="true">
+  When true, wraps children in a centered max-width container.
+  When false, children take full width (useful for dashboard/admin layouts).
+</ParamField>
+
+## Container behavior
+
+<Tabs>
+  <Tab title="Containerized (default)">
+    ```tsx
+    <NeoLayout>
+      <h1>Content</h1>
+    </NeoLayout>
+    ```
+    
+    Renders with centered container:
+    - Max width: 1280px (max-w-7xl)
+    - Horizontal padding: 16px mobile, 32px desktop
+    - Centered with mx-auto
+  </Tab>
+  
+  <Tab title="Full width">
+    ```tsx
+    <NeoLayout containerized={false}>
+      <Dashboard />
+    </NeoLayout>
+    ```
+    
+    Renders children directly without container (used by dashboard, admin, live pages)
+  </Tab>
+</Tabs>
+
+## Usage examples
+
+### Login page (containerized)
+
+```tsx from app/page.tsx
+export default function Home() {
+  return (
+    <NeoLayout className="flex flex-col items-center justify-center min-h-screen relative overflow-hidden">
+      <NeoCard className="w-full max-w-md px-4">
+        {/* Login form */}
+      </NeoCard>
+    </NeoLayout>
+  );
+}
+```
+
+### Dashboard (full width)
+
+```tsx from app/dashboard/page.tsx
+export default function Dashboard() {
+  return (
+    <NeoLayout
+      className="min-h-screen lg:h-screen lg:overflow-hidden"
+      containerized={false}
+    >
+      {/* Full-width dashboard UI */}
+    </NeoLayout>
+  );
+}
+```
+
+### Admin panel (full width)
+
+```tsx from app/admin/page.tsx
+export default function AdminPage() {
+  return (
+    <NeoLayout containerized={false}>
+      <div className="min-h-screen lg:h-screen flex flex-col">
+        {/* Admin controls */}
+      </div>
+    </NeoLayout>
+  );
+}
+```
+
+## Styling
+
+### Root div classes
+- `min-h-screen` - Minimum full viewport height
+- `bg-[var(--color-bg)]` - Theme background color
+- `text-[var(--color-text)]` - Theme text color
+- `transition-colors duration-300` - Smooth theme transitions
+- `font-sans` - Sans-serif font stack
+
+### Container (when containerized=true)
+- `w-full` - Full width up to max-width
+- `max-w-7xl` - 1280px maximum width
+- `mx-auto` - Horizontal centering
+- `p-4 md:p-8` - Responsive padding
+
+## Theme integration
+
+NeoLayout reads CSS variables from ThemeProvider:
+
+```css Theme variables
+--color-bg: Background color
+--color-text: Text color
+--color-primary: Primary accent
+--color-secondary: Secondary accent
+--color-surface: Card/surface color
+--color-border: Border color
+--color-danger: Error/danger color
+--color-success: Success color
+--neo-shadow-color: Shadow color
+--neo-radius: Border radius
+```
+
+## Design notes
+
+- **Theme transitions** - Color transitions happen smoothly over 300ms when theme changes
+- **Responsive padding** - More padding on desktop for better spacing
+- **Flexible layout** - containerized prop allows both centered and full-width layouts
+- **Minimum height** - Ensures pages fill viewport even with little content
+
+## See also
+
+- [ThemeChanger](/components/theme-changer) - Theme customization component
+- [Team Dashboard](/features/team-dashboard) - Example of full-width layout
+- [Admin Panel](/features/admin-panel) - Another full-width layout example

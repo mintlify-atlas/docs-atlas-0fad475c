@@ -36,7 +36,8 @@
               "features/team-dashboard",
               "features/auction-mechanics",
               "features/admin-panel",
-              "features/live-view"
+              "features/live-view",
+              "features/leaderboard"
             ]
           },
           {
@@ -58,14 +59,19 @@
               "components/neo-button",
               "components/neo-card",
               "components/neo-input",
-              "components/neo-table"
+              "components/neo-table",
+              "components/neo-badge",
+              "components/neo-modal",
+              "components/neo-layout"
             ]
           },
           {
             "group": "Specialized",
             "pages": [
               "components/city-map",
-              "components/bid-card"
+              "components/bid-card",
+              "components/tracking-window",
+              "components/theme-changer"
             ]
           }
         ]

@@ -1,0 +1,155 @@
+---
+title: Public leaderboard
+description: Real-time leaderboard display for audience viewing and event projection
+---
+
+The public leaderboard page provides a dedicated, full-screen view of team rankings optimized for projection displays, streaming overlays, and audience screens during live auction events.
+
+## Overview
+
+Accessible at `/leaderboard`, this page displays real-time team rankings with automatic updates via Socket.IO. Unlike the live view page which shows the map and current plot, the leaderboard focuses entirely on team scores and standings.
+
+<CardGroup cols={2}>
+  <Card title="Real-time updates" icon="bolt">
+    Rankings update instantly as bids are placed and plots are sold
+  </Card>
+  <Card title="No authentication" icon="lock-open">
+    Public access - no team login required
+  </Card>
+  <Card title="Projection optimized" icon="tv">
+    Clean, high-contrast design for large displays
+  </Card>
+  <Card title="Scoring breakdown" icon="calculator">
+    Shows cash, property value, and bonus calculation
+  </Card>
+</CardGroup>
+
+## Scoring system
+
+Team rankings are calculated using the final score formula:
+
+```typescript Score calculation
+const PLOT_BONUS = 10000000; // ₹10 Lakh per plot
+
+// Calculate for each team:
+const remainingCash = budget - spent;
+const propertyValue = sum of (plot prices + adjustments) for owned plots;
+const netWorth = remainingCash + propertyValue;
+const finalScore = netWorth + (plotsWon * PLOT_BONUS);
+```
+
+<Note>
+  The ₹10 Lakh bonus per plot incentivizes strategic plot acquisition beyond just maximizing cash reserves.
+</Note>
+
+## Display features
+
+### Team cards
+
+Each team is displayed with:
+- **Rank badge** - Position number with trophy icons for top 3
+- **Team name** - Large, bold text
+- **Plots owned** - Count of successfully acquired plots
+- **Final score** - Formatted in Lakhs/Crores
+
+### Top 3 highlighting
+
+<Tabs>
+  <Tab title="1st place">
+    - Gold background (#FFD700)
+    - Trophy emoji 🥇
+    - Largest card with scale effect
+    - 8px shadow offset
+  </Tab>
+  
+  <Tab title="2nd place">
+    - Silver background (#C0C0C0)
+    - Medal emoji 🥈
+    - Medium scale (1.02)
+    - 6px shadow offset
+  </Tab>
+  
+  <Tab title="3rd place">
+    - Bronze background (#CD7F32)
+    - Medal emoji 🥉
+    - Slight scale (1.01)
+    - 4px shadow offset
+  </Tab>
+</Tabs>
+
+### Info panel
+
+Click the info icon to view:
+- Scoring formula explanation
+- Plot bonus details
+- How rankings are calculated
+- Real-time update information
+
+## Real-time updates
+
+The leaderboard connects via Socket.IO and listens for:
+
+```typescript Socket events
+// Team financial updates
+socket.on('team_update', (data) => {
+  // Update team's spent, budget, plots_won
+});
+
+// Plot ownership changes
+socket.on('plot_update', (data) => {
+  // Recalculate property values
+});
+
+// Auction state changes
+socket.on('auction_state_update', (data) => {
+  // Update auction status display
+});
+```
+
+## Usage scenarios
+
+<AccordionGroup>
+  <Accordion title="Live event projection">
+    Display on large screens or projectors during in-person auction events. The clean, high-contrast design ensures visibility from a distance.
+  </Accordion>
+  
+  <Accordion title="Streaming overlay">
+    Capture the leaderboard in OBS or streaming software as a scene for live broadcasts. Can be used as a picture-in-picture or transition scene.
+  </Accordion>
+  
+  <Accordion title="Waiting room display">
+    Show rankings on lobby screens while waiting for the next round to begin, building excitement and competition.
+  </Accordion>
+  
+  <Accordion title="Post-auction recap">
+    After the auction ends, the leaderboard displays final standings with full scoring breakdowns, perfect for award ceremonies.
+  </Accordion>
+</AccordionGroup>
+
+## Design considerations
+
+### Responsive behavior
+- **Desktop** - Full table view with all columns visible
+- **Mobile** - Stacked cards with essential info only
+- **Large displays** - Increased font sizes and spacing
+
+### Performance
+- **Throttled updates** - Rankings recalculate only when necessary
+- **Memoized calculations** - Expensive score calculations are cached
+- **Optimized rendering** - Only changed teams trigger re-renders
+
+## Differences from live view
+
+| Feature | Leaderboard | Live View |
+|---------|-------------|----------|
+| Focus | Team rankings only | Current plot + map |
+| Plot details | Not shown | Current plot details |
+| City map | Not shown | Interactive map |
+| Bid activity | Not shown | Real-time bid feed |
+| Use case | Projection/audience | General spectating |
+
+## See also
+
+- [Live View](/features/live-view) - Public spectator view with map
+- [Team Dashboard](/features/team-dashboard) - Team-specific dashboard
+- [Auction Mechanics](/features/auction-mechanics) - Scoring system details
