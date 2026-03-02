@@ -1,0 +1,115 @@
+{
+  "projectType": "saas",
+  "projectName": "AuctionFest",
+  "projectDescription": "Real-time plot auction platform with multi-round bidding, policy adjustments, and live leaderboards",
+  "theme": "aspen",
+  "primaryColor": "#facc15",
+  "lightColor": "#fef3c7",
+  "darkColor": "#ca8a04",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/team-dashboard",
+              "features/auction-mechanics",
+              "features/admin-panel",
+              "features/live-view"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/setup",
+              "guides/running-auction",
+              "guides/policy-rounds"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Components",
+        "groups": [
+          {
+            "group": "Neo Components",
+            "pages": [
+              "components/neo-button",
+              "components/neo-card",
+              "components/neo-input",
+              "components/neo-table"
+            ]
+          },
+          {
+            "group": "Specialized",
+            "pages": [
+              "components/city-map",
+              "components/bid-card"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Data Endpoints",
+            "pages": [
+              "api/teams",
+              "api/plots",
+              "api/bids"
+            ]
+          },
+          {
+            "group": "Admin Endpoints",
+            "pages": [
+              "api/admin/controls",
+              "api/admin/adjustments"
+            ]
+          },
+          {
+            "group": "Real-time Events",
+            "pages": [
+              "api/socket-events"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time bidding with Socket.IO",
+    "Multi-round auction system with 6 rounds",
+    "Policy-based plot adjustments",
+    "Admin control panel with live monitoring",
+    "Interactive city map visualization",
+    "Team authentication and budget management",
+    "Rebid marketplace (Round 4)",
+    "Live spectator view",
+    "Neo-brutalist design system"
+  ],
+  "publicApiSurface": [
+    "/api/data/teams",
+    "/api/data/plots",
+    "/api/data/bids",
+    "/api/admin/start",
+    "/api/admin/pause",
+    "/api/admin/next",
+    "/api/admin/sell",
+    "/api/admin/adjust-plot",
+    "/api/rebid/offer",
+    "socket.emit('join_auction')",
+    "socket.on('auction_state_update')",
+    "socket.on('new_bid')",
+    "socket.on('plot_adjustment')"
+  ]
+}
